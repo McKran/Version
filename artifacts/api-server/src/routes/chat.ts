@@ -1,7 +1,7 @@
 /**
  * AI Chat Route — Gemini
  *
- * Uses Gemini API with gemini-3.5-flash-lite model.
+ * Uses Gemini API with gemini-3.1-flash-lite model.
  * Specialized for Philippine agriculture assistance only.
  * Conversation history stored in Postgres via Drizzle ORM (or in-memory if DB missing).
  */
@@ -9,7 +9,7 @@
 import { Router } from "express";
 import { db, conversations, messages } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
-import { AI_MODELS, getGenAI } from "../lib/ai-config";
+import { AI_MODELS, getGenAI, getGeminiApiKey } from "../lib/ai-config";
 
 const router = Router();
 
@@ -79,7 +79,7 @@ STRICT RULES:
 
 /** GET /api/chat/status */
 router.get("/chat/status", (_req, res) => {
-  const ready = !!process.env.GEMINI_API_KEY;
+  const ready = !!getGeminiApiKey();
   res.json({ ready, model: MODEL, provider: "google" });
 });
 
@@ -172,8 +172,8 @@ router.post("/chat/conversations/:id/messages", async (req, res) => {
     return;
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    res.status(503).json({ error: "AI service not configured. Please add GEMINI_API_KEY." });
+  if (!getGeminiApiKey()) {
+    res.status(503).json({ error: "Grownox AI service is not configured. Please check your GEMINI_API_KEY in Replit Secrets." });
     return;
   }
 

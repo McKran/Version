@@ -388,9 +388,9 @@ ${JSON.stringify(videoInputList, null, 2)}`;
       });
       responseText = response.text || "";
     } catch (aiErr: any) {
-      console.warn("[tutorials/analyze] Primary Gemini call failed, trying gemini-3.5-flash-lite fallback:", aiErr);
+      console.warn("[tutorials/analyze] Primary Gemini call failed, trying gemini-3.1-flash-lite fallback:", aiErr?.message || aiErr);
       const fallbackResp = await ai.models.generateContent({
-        model: "gemini-3.5-flash-lite",
+        model: "gemini-3.1-flash-lite",
         contents: [
           {
             role: "user",

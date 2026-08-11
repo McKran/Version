@@ -10,7 +10,7 @@ import {
   Clock, Zap, Leaf, ThermometerSun
 } from "lucide-react";
 
-const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+const BASE_URL = (import.meta.env.BASE_URL ?? "").replace(/\/+$/, "");
 
 const STAGE_TYPE_CONFIG: Record<string, { color: string; bg: string; icon: React.ElementType }> = {
   preparation:   { color: "text-amber-700 dark:text-amber-400",   bg: "bg-amber-50/80 dark:bg-amber-950/30 border-amber-200/80 dark:border-amber-800",   icon: Sprout },

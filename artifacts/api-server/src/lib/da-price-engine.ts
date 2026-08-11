@@ -503,27 +503,17 @@ Respond ONLY with valid JSON.`;
         },
       });
     } catch (e1: any) {
-      console.warn(`[market-insight] Model ${AI_MODELS.MARKET_INSIGHTS} failed, trying gemini-3.5-flash-lite fallback...`, e1?.message);
-      try {
-        resp = await ai.models.generateContent({
-          model: "gemini-3.5-flash-lite",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.2,
-          },
-        });
-      } catch (e2: any) {
-        console.warn(`[market-insight] Fallback gemini-3.5-flash-lite failed, trying gemini-3.5-flash...`, e2?.message);
-        resp = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.2,
-          },
-        });
-      }
+      console.warn(`[market-insight] Model ${AI_MODELS.MARKET_INSIGHTS} failed (${e1?.message || e1}). Attempting valid fallback model gemini-3.6-flash...`);
+      // If primary was gemini-3.1-flash-lite, try gemini-3.6-flash or gemini-flash-latest
+      const fallbackModel = AI_MODELS.MARKET_INSIGHTS === "gemini-3.6-flash" ? "gemini-3.1-flash-lite" : "gemini-3.6-flash";
+      resp = await ai.models.generateContent({
+        model: fallbackModel,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.2,
+        },
+      });
     }
 
     const rawText = resp.text ?? "{}";

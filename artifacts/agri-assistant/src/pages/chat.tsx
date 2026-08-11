@@ -10,7 +10,7 @@ import {
   RotateCcw, Sparkles, Leaf
 } from "lucide-react";
 
-const BASE_URL = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+const BASE_URL = (import.meta.env.BASE_URL ?? "").replace(/\/+$/, "");
 
 interface ChatMessage {
   id: number | string;
@@ -371,6 +371,7 @@ export default function Chat() {
       const decoder = new TextDecoder();
       let buf = "";
       let raw = "";
+      let streamErr: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -382,7 +383,10 @@ export default function Chat() {
           if (!line.startsWith("data: ")) continue;
           try {
             const ev = JSON.parse(line.slice(6));
-            if (ev.error) { setError(ev.error); break; }
+            if (ev.error) {
+              streamErr = ev.error;
+              break;
+            }
             if (ev.done) break;
             if (ev.content) {
               raw += ev.content;
@@ -390,9 +394,15 @@ export default function Chat() {
             }
           } catch {}
         }
+        if (streamErr) break;
       }
 
-      if (raw) {
+      if (streamErr) {
+        setError(cleanErrorMessage(streamErr));
+        if (!raw) {
+          setMessages(prev => prev.filter(m => m.id !== tempId));
+        }
+      } else if (raw) {
         const assistantMsg: ChatMessage = {
           id: Date.now(),
           conversationId: convId,
@@ -404,7 +414,10 @@ export default function Chat() {
         loadConversations();
       }
     } catch (err: any) {
-      if (err?.name !== "AbortError") setError("Connection lost. Please try sending again.");
+      if (err?.name !== "AbortError") {
+        setError("Connection issue. Please try sending your message again.");
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      }
     } finally {
       setStreaming(false);
       setStreamingContent("");

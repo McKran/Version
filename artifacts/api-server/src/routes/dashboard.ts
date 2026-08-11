@@ -16,7 +16,7 @@ async function aiComplete(prompt: string, maxTokens: number): Promise<string | n
   try {
     const ai = getGenAI();
     const resp = await ai.models.generateContent({
-      model: GEMINI_MODELS.CHAT || "gemini-3.5-flash-lite",
+      model: GEMINI_MODELS.CHAT || "gemini-3.1-flash-lite",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
