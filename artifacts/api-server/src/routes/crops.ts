@@ -61,10 +61,118 @@ const CALENDAR_EVENTS = [
   { crop: "All crops", activity: "Soil pH testing and lime application", daysFromNow: 45, priority: "medium" },
 ];
 
+const CROP_NAMES_FIL: Record<string, string> = {
+  Maize: "Mais",
+  Wheat: "Trigo",
+  Rice: "Palay",
+  Sorghum: "Batad / Sorghum",
+  Millet: "Mijo / Millet",
+  Barley: "Barli",
+  Teff: "Teff",
+  Cassava: "Kamoteng Kahoy",
+  Yam: "Ubi / Yam",
+  "Sweet Potato": "Kamote",
+  Potatoes: "Patatas",
+  Beans: "Sitaw / Mungo",
+  Soybeans: "Soya / Soybeans",
+  Groundnuts: "Mani",
+  Cowpeas: "Paayap",
+  Chickpeas: "Garbanzos",
+  Tomatoes: "Kamatis",
+  Onions: "Sibuyas",
+  Garlic: "Bawang",
+  Cabbage: "Repolyo",
+  Carrots: "Karot",
+  Avocado: "Abokado",
+  Bananas: "Saging",
+  Mangoes: "Mangga",
+  Coffee: "Kape",
+  Tea: "Tsaa",
+  Cotton: "Bulak",
+  Sugarcane: "Tubo",
+  Sunflower: "Mirasol",
+  Cocoa: "Kakaw",
+  Rubber: "Goma",
+  Sesame: "Lenga",
+  Cashew: "Kasuy",
+  Ginger: "Luya",
+  "All crops": "Lahat ng pananim",
+};
+
+const CROP_NOTES_FIL: Record<string, string> = {
+  Maize: "Pangunahing pananim na pagkain sa buong mundo. Mahusay sa lupang loam na may sapat na ulan. Isabay ang sitaw o mungo para sa mas magandang nitraheno sa lupa.",
+  Wheat: "Pangunahing siryal para sa pandaigdigang merkado. Nangangailangan ng malamig na temperatura at maayos na basang lupa. Magandang potensyal sa pagluwas.",
+  Rice: "Pangunahing pagkain sa Asya at Africa. Ang mga uri sa padak ay nangangailangan ng tubig; ang palay sa mataas na lupa ay kailangan ng sapat na halumigmig.",
+  Sorghum: "Matatag sa tagtuyot. Tamang-tama para sa mga tuyong rehiyon. Ginagamit bilang pagkain at pakain sa hayop.",
+  Millet: "Napakatatag sa tagtuyot. Napakahusay para sa seguridad sa pagkain sa tuyong klima. Maikling panahon ng paglaki.",
+  Barley: "Malamig na klima siryal para sa mataas na lugar. Mataas ang demand para sa malt at pakain sa hayop.",
+  Teff: "Grap ng Ethiopia na walang gluten, mayaman sa bakal. Lumalaking demand sa merkado ng kalusugan.",
+  Cassava: "Pangunahing pananim sa seguridad sa pagkain. Matatag sa tagtuyot pagkaraang maitanim. Mataas ang nilalamang carbohydrates.",
+  Yam: "Mataas ang halagang pananim. Nangangailangan ng suporta at matabang lupa na may maayos na patubig.",
+  "Sweet Potato": "Mataas ang sustansya at mabilis lumaki. Ang mga kulay kahel na uri ay mayaman sa Bitamina A.",
+  Potatoes: "Lumalago sa malamig na kabundukan. Nangangailangan ng maayos na lupang pataba. Mataas ang demand sa merkado buong taon.",
+  Beans: "Nagpapataas ng nitraheno sa lupa. Napakahusay para sa kalusugan ng lupa. Malawak ang demand sa merkado.",
+  Soybeans: "Pangunahing pandaigdigang kalakal. Malakas na merkado sa pagluwas. Ginagamit para sa langis at pakain sa hayop.",
+  Groundnuts: "Mataas ang protina at langis. Magandang katatagan sa tagtuyot kapag nakatanim na.",
+  Cowpeas: "Matatag sa tagtuyot na halaman para sa tuyong lugar. Ang mga dahon ay ginagawang gulay. Nagpapaganda ng lupa.",
+  Chickpeas: "Mataas ang halaga na legumbre para sa pagluwas. Pananim para sa malamig na panahon.",
+  Tomatoes: "Mataas ang halaga na gulay. Nangangailangan ng patubig at maingat na pamamahala. Magandang presyo sa merkado.",
+  Onions: "Magandang pananim sa tag-araw. Mataas at pare-parehong demand sa merkado.",
+  Garlic: "Mataas ang halaga na pananim na may malakas na demand sa lokal at labas ng bansa.",
+  Cabbage: "Gulay sa malamig na panahon na may pare-parehong merkado. Maikling siklo ng pagtatanim.",
+  Carrots: "Mataas ang halagang pampalusog. Nangangailangan ng malalim at malambot na lupa.",
+  Avocado: "Perennial na may mataas na halaga sa pagluwas. Lumalaking demand sa buong mundo. 3-5 taon bago ang unang ani.",
+  Bananas: "Nagbibigay ng ani buong taon. Pangunahing pagkain at produktong iniluluwas. Nangangailangan ng sapat na tubig at pataba.",
+  Mangoes: "Puno ng prutas na matatag sa tagtuyot kapag nakatanim na. Magandang merkado sa lokal at ibang bansa.",
+  Coffee: "Premyong pananim sa pagluwas. Ang arabica sa lilim ang may pinakamataas na presyo.",
+  Tea: "Perennial na may pare-parehong demand sa buong mundo. Pinakamainam sa mataas na lugar.",
+  Cotton: "Pangunahing cash crop para sa industriya ng tela. Nangangailangan ng 180-200 araw na walang yelo.",
+  Sugarcane: "Mahabang siklo ng pananim (12-18 buwan). Mataas na biomasa para sa asukal at etanol.",
+  Sunflower: "Matatag sa tagtuyot na pananim para sa langis. Tiyak ang presyo. Maganda para sa kalusugan ng lupa.",
+  Cocoa: "Premyong kalakal na may tumataas na presyo sa mundo. Nangangailangan ng basang klimang tropikal.",
+  Rubber: "Perennial na puno para sa industriyal na goma. Magandang kita pagkalipas ng 6-7 taon.",
+  Sesame: "Mataas ang halaga na pananim para sa langis. Matatag sa tagtuyot. Lumalaking demand sa pagluwas.",
+  Cashew: "Puno ng prutas na angkop sa tropikal na baybayin. Mataas ang halaga sa pagluwas.",
+  Ginger: "Mataas ang halaga na pampalasa na may malakas na demand. Nangangailangan ng lilim at basang lupa.",
+};
+
+const CROP_WINDOWS_FIL: Record<string, string> = {
+  "Mar–May": "Mar–Mayo",
+  "Oct–Dec": "Okt–Dis",
+  "Apr–Jun": "Abr–Hun",
+  "May–Jul": "Mayo–Hul",
+  "Sep–Nov": "Set–Nob",
+  "Feb–Apr": "Peb–Abr",
+  "Jun–Aug": "Hun–Ago",
+  "Jun–Jul": "Hun–Hul",
+  "Mar–Apr": "Mar–Abr",
+  "Year-round": "Buong taon",
+};
+
+const CALENDAR_ACTIVITIES_FIL: Record<string, string> = {
+  "Land preparation and plowing": "Paghahanda ng lupa at pag-aararo",
+  "Seed procurement and treatment": "Pagbili ng binhi at paggamot",
+  "Nursery bed preparation": "Paghahanda ng kama ng punlaan",
+  "Planting — optimal window opens": "Pagtatanim — bukas ang pinakamainam na panahon",
+  "Seed potato preparation": "Paghahanda ng binhing patatas",
+  "Planting alongside maize": "Pagtatanim kasabay ng mais",
+  "Transplanting to main field": "Pagtatipat sa pangunahing bukid",
+  "First fertilizer top-dressing": "Unang pag-aabono (top-dressing)",
+  "Pest scouting — stem borer check": "Pagsusuri sa peste — pag-inspeksyon sa stem borer",
+  "Inoculation and planting": "Inokulasyon at pagtatanim",
+  "Variety selection and seed prep": "Pagpili ng uri at paghahanda ng binhi",
+  "Pruning and canopy management": "Pagpuksa/pagtatabas ng sanga at pamamahala ng puno",
+  "Irrigation schedule assessment": "Pagtataya ng iskedyul ng pagpapatubig",
+  "Stem cutting selection": "Pagpili ng mga putol ng stem",
+  "Soil pH testing and lime application": "Pagsusuri ng pH ng lupa at paglalagay ng apog",
+};
+
 router.get("/crops/recommendations", async (req, res) => {
   const parsed = GetCropRecommendationsQueryParams.safeParse(req.query);
   const season = (parsed.success && parsed.data.season) ? parsed.data.season : "long-rains";
   const climate = req.query.climate as string || "";
+  const lang = (req.query.lang as string) || "en";
+  const isFil = lang === "fil";
 
   try {
     let filtered = ALL_CROP_DATA.filter(c => c.season === season || season === "all");
@@ -72,9 +180,17 @@ router.get("/crops/recommendations", async (req, res) => {
       const climateFiltered = filtered.filter(c => c.climate.includes(climate as any));
       if (climateFiltered.length >= 3) filtered = climateFiltered;
     }
-    const results = (filtered.length > 0 ? filtered : ALL_CROP_DATA).map(
-      ({ season: _s, climate: _c, ...crop }) => crop
-    );
+    const rawResults = filtered.length > 0 ? filtered : ALL_CROP_DATA;
+    const results = rawResults.map(({ season: _s, climate: _c, ...crop }) => {
+      if (!isFil) return crop;
+      return {
+        ...crop,
+        cropName: CROP_NAMES_FIL[crop.cropName] || crop.cropName,
+        notes: CROP_NOTES_FIL[crop.cropName] || crop.notes,
+        plantingWindow: CROP_WINDOWS_FIL[crop.plantingWindow] || crop.plantingWindow,
+        estimatedYield: crop.estimatedYield.replace("tons/ha", "tonelada/ha"),
+      };
+    });
     res.json(results);
   } catch (err) {
     req.log.error({ err }, "Error getting crop recommendations");
@@ -83,8 +199,19 @@ router.get("/crops/recommendations", async (req, res) => {
 });
 
 router.get("/crops/calendar", async (req, res) => {
+  const lang = (req.query.lang as string) || "en";
+  const isFil = lang === "fil";
+
   try {
-    res.json(CALENDAR_EVENTS);
+    const events = CALENDAR_EVENTS.map(event => {
+      if (!isFil) return event;
+      return {
+        ...event,
+        crop: CROP_NAMES_FIL[event.crop] || event.crop,
+        activity: CALENDAR_ACTIVITIES_FIL[event.activity] || event.activity,
+      };
+    });
+    res.json(events);
   } catch (err) {
     req.log.error({ err }, "Error getting crop calendar");
     res.status(500).json({ error: "Failed to fetch crop calendar" });

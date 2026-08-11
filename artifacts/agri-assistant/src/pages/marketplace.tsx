@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useSettings } from "@/hooks/use-settings";
 import {
   Store, ShoppingBag, PlusCircle, Search, Filter, MapPin, ShieldCheck,
   CheckCircle2, AlertCircle, Sparkles, Phone, ArrowUpRight, ArrowDownRight,
@@ -124,6 +125,7 @@ const CATEGORIES = [
 
 export default function MarketplacePage() {
   const { toast } = useToast();
+  const { settings, t } = useSettings();
   const [activeTab, setActiveTab] = useState<"browse" | "farmer-dash" | "buyer-dash">("browse");
 
   // Sync tab with URL search parameter and handle browser navigation
@@ -388,13 +390,13 @@ export default function MarketplacePage() {
     if (selectedListing) {
       setLoadingAi(true);
       setAiAnalysis(null);
-      fetch(`/api/marketplace/listings/${selectedListing.listingId}/ai-analysis?buyerLocation=${encodeURIComponent(buyerLocation)}`)
+      fetch(`/api/marketplace/listings/${selectedListing.listingId}/ai-analysis?buyerLocation=${encodeURIComponent(buyerLocation)}&lang=${settings.language}`)
         .then((r) => r.json())
         .then((data) => setAiAnalysis(data))
         .catch((e) => console.error(e))
         .finally(() => setLoadingAi(false));
     }
-  }, [selectedListing, buyerLocation]);
+  }, [selectedListing, buyerLocation, settings.language]);
 
   // Fetch DA Reference Preview for New Listing
   useEffect(() => {
@@ -665,7 +667,7 @@ export default function MarketplacePage() {
               <div className="relative lg:col-span-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search crop, variety, seller, location..."
+                  placeholder={settings.language === "fil" ? "Maghanap ng pananim, uri, nagbebenta, lokasyon..." : "Search crop, variety, seller, location..."}
                   className="pl-9 h-9 text-xs bg-muted/40"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -676,12 +678,12 @@ export default function MarketplacePage() {
               {/* Category Filter */}
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="h-9 text-xs bg-muted/40">
-                  <SelectValue placeholder="All Categories" />
+                  <SelectValue placeholder={t.allCategories} />
                 </SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((cat) => (
                     <SelectItem key={cat} value={cat}>
-                      {cat === "all" ? "All Categories" : cat}
+                      {cat === "all" ? t.allCategories : cat}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -690,20 +692,20 @@ export default function MarketplacePage() {
               {/* Sort By */}
               <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
                 <SelectTrigger className="h-9 text-xs bg-muted/40">
-                  <SelectValue placeholder="Sort By" />
+                  <SelectValue placeholder={settings.language === "fil" ? "I-ayos Ayon sa" : "Sort By"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                  <SelectItem value="distance">Distance: Nearest First</SelectItem>
-                  <SelectItem value="quantity">Stock: Highest Available</SelectItem>
+                  <SelectItem value="newest">{settings.language === "fil" ? "Pinakabago Muna" : "Newest First"}</SelectItem>
+                  <SelectItem value="price_asc">{settings.language === "fil" ? "Presyo: Mababa Pataas" : "Price: Low to High"}</SelectItem>
+                  <SelectItem value="price_desc">{settings.language === "fil" ? "Presyo: Mataas Pababa" : "Price: High to Low"}</SelectItem>
+                  <SelectItem value="distance">{settings.language === "fil" ? "Distansya: Pinakamalapit" : "Distance: Nearest First"}</SelectItem>
+                  <SelectItem value="quantity">{settings.language === "fil" ? "Stock: Pinakamarami" : "Stock: Highest Available"}</SelectItem>
                 </SelectContent>
               </Select>
 
               {/* Search Action */}
               <Button onClick={fetchListings} className="h-9 text-xs font-semibold bg-primary text-primary-foreground">
-                <Filter className="h-3.5 w-3.5 mr-1" /> Apply Filters
+                <Filter className="h-3.5 w-3.5 mr-1" /> {settings.language === "fil" ? "I-apply ang Filter" : "Apply Filters"}
               </Button>
             </div>
           </Card>
@@ -712,9 +714,13 @@ export default function MarketplacePage() {
           <div className="rounded-xl border border-amber-300/60 bg-gradient-to-r from-amber-50 via-rose-50/40 to-amber-50/60 p-3 sm:p-3.5 text-xs text-amber-950 dark:from-amber-950/40 dark:to-rose-950/30 dark:text-amber-200 dark:border-amber-800/60 flex items-start gap-2.5">
             <ShieldCheck className="h-5 w-5 text-rose-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div className="space-y-0.5 text-[11px] sm:text-xs">
-              <div className="font-bold text-stone-900 dark:text-stone-100">DA Reference Benchmark & 10% Protection Rule</div>
+              <div className="font-bold text-stone-900 dark:text-stone-100">
+                {settings.language === "fil" ? "Reperensya ng DA & 10% Protection Rule" : "DA Reference Benchmark & 10% Protection Rule"}
+              </div>
               <p className="text-stone-600 dark:text-stone-300 leading-relaxed">
-                Every listing displays live Department of Agriculture (DA) Bantay Presyo prices. Offers are safeguarded up to <strong>10% below</strong> the DA benchmark.
+                {settings.language === "fil"
+                  ? "Ang bawat pananim ay nagpapakita ng presyo mula sa DA Bantay Presyo. Ang mga alok ay napoprotektahan hanggang 10% sa ilalim ng benchmark ng DA."
+                  : "Every listing displays live Department of Agriculture (DA) Bantay Presyo prices. Offers are safeguarded up to 10% below the DA benchmark."}
               </p>
             </div>
           </div>
@@ -732,9 +738,13 @@ export default function MarketplacePage() {
                 <Store className="h-6 w-6" />
               </div>
               <div className="space-y-1">
-                <p className="text-base font-bold text-foreground">No Crop Listings Available Yet</p>
+                <p className="text-base font-bold text-foreground">
+                  {settings.language === "fil" ? "Wala Pang Tinda na Pananim" : "No Crop Listings Available Yet"}
+                </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Be the first farmer or agricultural cooperative to list your harvested crops and connect directly with verified buyers across the Philippines.
+                  {settings.language === "fil"
+                    ? "Maging unang magsasaka o kooperatiba na magtinda ng iyong ani at makipag-ugnayan sa mga mamimili sa buong Pilipinas."
+                    : "Be the first farmer or agricultural cooperative to list your harvested crops and connect directly with verified buyers across the Philippines."}
                 </p>
               </div>
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
@@ -742,7 +752,7 @@ export default function MarketplacePage() {
                   className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs h-9 px-5 w-full sm:w-auto shadow-xs"
                   onClick={() => setAddListingOpen(true)}
                 >
-                  <PlusCircle className="h-4 w-4 mr-1.5" /> Sell Your Crops / Add Listing
+                  <PlusCircle className="h-4 w-4 mr-1.5" /> {settings.language === "fil" ? "Magbenta ng Ani / Magdagdag ng Tinda" : "Sell Your Crops / Add Listing"}
                 </Button>
                 {(searchQuery || selectedCategory !== "all" || selectedRegion !== "all") && (
                   <Button
@@ -751,7 +761,7 @@ export default function MarketplacePage() {
                     className="text-xs h-9 w-full sm:w-auto"
                     onClick={() => { setSearchQuery(""); setSelectedCategory("all"); setSelectedRegion("all"); setSortBy("newest"); fetchListings(); }}
                   >
-                    Reset Filters
+                    {settings.language === "fil" ? "I-reset ang Filter" : "Reset Filters"}
                   </Button>
                 )}
               </div>

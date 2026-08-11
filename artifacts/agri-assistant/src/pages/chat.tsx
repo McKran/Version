@@ -27,7 +27,7 @@ interface Conversation {
   updatedAt?: string;
 }
 
-const STARTERS = [
+const STARTERS_EN = [
   {
     title: "Rice Farming",
     desc: "Best high-yield rice varieties for my region",
@@ -47,6 +47,29 @@ const STARTERS = [
     title: "Weather & Irrigation",
     desc: "Watering schedule based on weather forecast",
     prompt: "💧 How should I adjust my irrigation based on the current weather forecast?",
+  },
+];
+
+const STARTERS_FIL = [
+  {
+    title: "Pagtatanim ng Palay",
+    desc: "Pinakamagandang uri ng palay na mataas ang ani",
+    prompt: "🌾 Anong uri ng palay ang pinakamagandang itanim sa aking rehiyon at panahon?",
+  },
+  {
+    title: "Pagsugpo sa Peste at Sakit",
+    desc: "Pagtukoy at paggamot sa bacterial leaf blight at armyworm",
+    prompt: "🐛 Paano matutukoy, maiiwasan, at magagamot ang bacterial leaf blight sa palay?",
+  },
+  {
+    title: "Iskedyul ng Pag-aabono",
+    desc: "Rekomendasyon sa tamang oras ng paglalagay ng pataba",
+    prompt: "🧪 Gumawa ng kumpletong iskedyul ng paglalagay ng abono para sa aking pananim.",
+  },
+  {
+    title: "Panahon at Pagpapatubig",
+    desc: "Iskedyul ng pagpapatubig batay sa ulat ng panahon",
+    prompt: "💧 Paano ko dapat iakma ang aking pagpapatubig batay sa ulat ng panahon?",
   },
 ];
 
@@ -440,6 +463,8 @@ export default function Chat() {
 
   const hasPsgc = !!(settings.regionCode || settings.provinceCode || settings.cityName);
   const activeConv = conversations.find(c => c.id === activeId);
+  const isFil = settings.language === "fil";
+  const starters = isFil ? STARTERS_FIL : STARTERS_EN;
 
   return (
     <div className="flex h-full w-full bg-background text-foreground overflow-hidden font-sans">
@@ -467,7 +492,7 @@ export default function Chat() {
             className="flex-1 justify-start gap-2.5 h-10 text-sm font-medium text-zinc-200 hover:text-white hover:bg-zinc-800 rounded-lg px-3"
           >
             <Plus className="h-4 w-4 text-zinc-400" />
-            <span>New chat</span>
+            <span>{isFil ? "Bagong Chat" : "New chat"}</span>
           </Button>
           <Button
             size="icon"
@@ -482,11 +507,11 @@ export default function Chat() {
         {/* Conversations List */}
         <ScrollArea className="flex-1 px-2 py-3">
           <div className="px-2 pb-2 text-[11px] font-semibold tracking-wider uppercase text-zinc-500">
-            Recent Chats
+            {isFil ? "Mga Nakaraang Chat" : "Recent Chats"}
           </div>
           {conversations.length === 0 ? (
             <p className="text-xs text-zinc-500 text-center py-8 px-4">
-              No conversations yet.
+              {isFil ? "Wala pang mga pag-uusap." : "No conversations yet."}
             </p>
           ) : (
             <div className="space-y-0.5">
@@ -503,11 +528,11 @@ export default function Chat() {
                     }`}
                   >
                     <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-cyan-400" : "text-zinc-500"}`} />
-                    <span className="flex-1 truncate leading-relaxed">{conv.title}</span>
+                    <span className="flex-1 truncate leading-relaxed">{conv.title === "New Chat" && isFil ? "Bagong Chat" : conv.title}</span>
                     <button
                       onClick={e => deleteConversation(conv.id, e)}
                       className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-400 text-zinc-500 transition-opacity"
-                      title="Delete chat"
+                      title={isFil ? "Burahin ang chat" : "Delete chat"}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -526,10 +551,10 @@ export default function Chat() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium text-zinc-200 truncate">
-                {settings.cityName || settings.provinceName || "Filipino Farmer"}
+                {settings.cityName || settings.provinceName || (isFil ? "Magsasakang Pilipino" : "Filipino Farmer")}
               </div>
               <div className="text-[10px] text-zinc-500 truncate">
-                {settings.preferredCrops.slice(0, 2).join(", ") || "Philippine Agri"}
+                {settings.preferredCrops.slice(0, 2).join(", ") || (isFil ? "Agrikultura sa Pilipinas" : "Philippine Agri")}
               </div>
             </div>
           </div>
@@ -565,7 +590,7 @@ export default function Chat() {
                 className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg hover:bg-amber-500/20 transition-colors flex items-center gap-1"
               >
                 <AlertCircle className="h-3 w-3" />
-                <span>Set location</span>
+                <span>{isFil ? "I-set ang lokasyon" : "Set location"}</span>
               </button>
             )}
             <Button
@@ -575,7 +600,7 @@ export default function Chat() {
               className="h-8 text-xs gap-1.5 rounded-lg border-border"
             >
               <Plus className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-              <span className="hidden sm:inline">New Chat</span>
+              <span className="hidden sm:inline">{isFil ? "Bagong Chat" : "New Chat"}</span>
             </Button>
           </div>
         </header>
@@ -589,15 +614,19 @@ export default function Chat() {
                 <Sprout className="h-8 w-8" />
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 text-stone-900 dark:text-stone-100">
-                What can I help with today?
+                {isFil ? "Ano ang maipaglilingkod ko ngayon?" : "What can I help with today?"}
               </h1>
               <p className="text-sm text-stone-600 dark:text-stone-300 mb-8 max-w-md leading-relaxed">
-                I am <span className="font-semibold text-stone-900 dark:text-stone-100">Grownox</span>, your AI agronomy assistant specialized in Philippine crops, pest management, and regional farming.
+                {isFil ? (
+                  <>Ako si <span className="font-semibold text-stone-900 dark:text-stone-100">Grownox</span>, ang iyong AI agronomy assistant na dalubhasa sa mga pananim sa Pilipinas, pagsugpo sa peste, at pagsasaka sa rehiyon.</>
+                ) : (
+                  <>I am <span className="font-semibold text-stone-900 dark:text-stone-100">Grownox</span>, your AI agronomy assistant specialized in Philippine crops, pest management, and regional farming.</>
+                )}
               </p>
 
               {/* Quick starter tiles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl text-left">
-                {STARTERS.map((s, idx) => (
+                {starters.map((s, idx) => (
                   <button
                     key={idx}
                     onClick={() => sendMessage(s.prompt)}
@@ -647,12 +676,12 @@ export default function Chat() {
                           <button
                             onClick={() => handleCopyMessage(msg.id, msg.content)}
                             className="p-1.5 rounded-lg hover:bg-muted text-xs flex items-center gap-1 transition-colors"
-                            title="Copy message"
+                            title={isFil ? "Kopyahin ang mensahe" : "Copy message"}
                           >
                             {copiedMsgId === msg.id ? (
                               <>
                                 <Check className="h-3.5 w-3.5 text-violet-500" />
-                                <span className="text-[11px] text-violet-500">Copied</span>
+                                <span className="text-[11px] text-violet-500">{isFil ? "Na-kopyang" : "Copied"}</span>
                               </>
                             ) : (
                               <>
@@ -688,7 +717,7 @@ export default function Chat() {
                         <span className="h-2 w-2 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: "0ms" }} />
                         <span className="h-2 w-2 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: "150ms" }} />
                         <span className="h-2 w-2 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: "300ms" }} />
-                        <span className="ml-1 text-violet-600 dark:text-violet-400 font-semibold animate-pulse">Grownox is working...</span>
+                        <span className="ml-1 text-violet-600 dark:text-violet-400 font-semibold animate-pulse">{isFil ? "Naghahanda ng sagot si Grownox..." : "Grownox is working..."}</span>
                       </div>
                     )}
                   </div>
@@ -714,7 +743,7 @@ export default function Chat() {
                     }}
                     className="h-7 px-2.5 text-xs shrink-0 border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
                   >
-                    Retry
+                    {isFil ? "Subukan Ulit" : "Retry"}
                   </Button>
                 </div>
               )}
@@ -736,7 +765,15 @@ export default function Chat() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={streaming}
-                placeholder={aiReady ? "Ask Grownox about your crops, pests, soil, or weather..." : "Connecting to AI..."}
+                placeholder={
+                  aiReady
+                    ? isFil
+                      ? "Magtanong kay Grownox tungkol sa iyong mga pananim, peste, lupa, o panahon..."
+                      : "Ask Grownox about your crops, pests, soil, or weather..."
+                    : isFil
+                    ? "Kumokonekta sa AI..."
+                    : "Connecting to AI..."
+                }
                 rows={1}
                 className="flex-1 resize-none bg-transparent px-3 py-2 text-sm text-foreground focus:outline-none disabled:opacity-50 min-h-[40px] max-h-[160px] leading-relaxed"
                 onInput={e => {
@@ -767,7 +804,9 @@ export default function Chat() {
 
             {/* Disclaimer footer text */}
             <p className="text-[11px] text-muted-foreground/60 text-center mt-2">
-              Grownox AI provides agricultural guidance. Verify important decisions with local agronomists.
+              {isFil
+                ? "Nagbibigay ang Grownox AI ng gabay sa agrikultura. Sumangguni sa lokal na agronomista para sa mahahalagang desisyon."
+                : "Grownox AI provides agricultural guidance. Verify important decisions with local agronomists."}
             </p>
           </div>
         </div>

@@ -937,8 +937,10 @@ export function generateFarmingPlan(
   location: string,
   climate: ClimateProfile,
   forecast: ForecastDay[],
-  wikiInfo: string | null
+  wikiInfo: string | null,
+  lang?: string
 ): FarmingPlanOutput {
+  const isFil = lang === "fil";
   const profile = lookupCrop(cropName) ?? buildGenericProfile(cropName);
   const avgGDD = Math.max(3, climate.avgDailyGDD);
 
@@ -957,18 +959,35 @@ export function generateFarmingPlan(
   const doy = Math.floor((plantDate.getTime() - new Date(plantDate.getFullYear(), 0, 0).getTime()) / 86400000);
 
   const riskAssessment = assessWeatherRisk(forecast, profile);
+  if (isFil) {
+    if (riskAssessment.notes.includes("High temperature stress")) {
+      riskAssessment.notes = "Inaasahang matinding init sa panahon ng pagtatanim. Siguraduhing may sapat na patubig.";
+    } else if (riskAssessment.notes.includes("Heavy rainfall")) {
+      riskAssessment.notes = "Inaasahang malakas na ulan — tiyakin ang maayos na drainage at ipagpaliban ang pag-aabono.";
+    } else if (riskAssessment.notes.includes("favorable")) {
+      riskAssessment.notes = "Pangkalahatang maganda at angkop ang panahon para sa pananim na ito.";
+    }
+  }
 
   const tempAtLocation = climate.annualMeanTemp;
   const isSuboptimal = tempAtLocation < profile.tempRange.min + 3 || tempAtLocation > profile.tempRange.max - 3;
-  const varietyNote = isSuboptimal
-    ? `Choose a variety adapted to ${tempAtLocation > profile.tempRange.optimal ? "warm/hot" : "cool"} conditions (mean temp: ${climate.annualMeanTemp}°C). Consult local extension service for certified varieties.`
-    : `Standard varieties perform well in ${location} (mean temp: ${climate.annualMeanTemp}°C, optimal for ${profile.name}: ${profile.tempRange.optimal}°C).`;
+  const varietyNote = isFil
+    ? (isSuboptimal
+      ? `Pumili ng uri ng binhi na angkop sa ${tempAtLocation > profile.tempRange.optimal ? "mainit" : "malamig"} na klima (karaniwang temp: ${climate.annualMeanTemp}°C). Kumonsulta sa lokal na tanggapan ng agrikultura para sa sertipikadong binhi.`
+      : `Ang mga karaniwang uri ng binhi ay magandang itanim sa ${location} (karaniwang temp: ${climate.annualMeanTemp}°C, angkop para sa ${profile.name}: ${profile.tempRange.optimal}°C).`)
+    : (isSuboptimal
+      ? `Choose a variety adapted to ${tempAtLocation > profile.tempRange.optimal ? "warm/hot" : "cool"} conditions (mean temp: ${climate.annualMeanTemp}°C). Consult local extension service for certified varieties.`
+      : `Standard varieties perform well in ${location} (mean temp: ${climate.annualMeanTemp}°C, optimal for ${profile.name}: ${profile.tempRange.optimal}°C).`);
 
   const yieldModifier = isSuboptimal ? 0.75 : 1.0;
   const profileKey = Object.keys(BASE_YIELDS).find((k) => profile.name.toLowerCase().includes(k));
   const expectedYield = profileKey
-    ? (isSuboptimal ? `${BASE_YIELDS[profileKey]} (reduced — suboptimal temperature)` : BASE_YIELDS[profileKey])
-    : `Estimated ${Math.round(2 * yieldModifier * 10) / 10}-${Math.round(5 * yieldModifier * 10) / 10} tons/ha based on local climate`;
+    ? (isSuboptimal
+      ? `${BASE_YIELDS[profileKey]} ${isFil ? "(nabawasan — sub-optimal na temperatura)" : "(reduced — suboptimal temperature)"}`
+      : BASE_YIELDS[profileKey])
+    : (isFil
+      ? `Tinatayang ${Math.round(2 * yieldModifier * 10) / 10}-${Math.round(5 * yieldModifier * 10) / 10} tonelada/ha batay sa lokal na klima`
+      : `Estimated ${Math.round(2 * yieldModifier * 10) / 10}-${Math.round(5 * yieldModifier * 10) / 10} tons/ha based on local climate`);
 
   const fertNPerApp = Math.round(profile.fertilizerProfile.n_kg_ha / profile.fertilizerProfile.splitApplications);
   const fertPTotal = profile.fertilizerProfile.p_kg_ha;
@@ -977,12 +996,21 @@ export function generateFarmingPlan(
   const stages = [
     {
       id: "stage-prep",
-      name: "Land Preparation",
+      name: isFil ? "Paghahanda ng Lupa" : "Land Preparation",
       type: "preparation",
       startDay: -14,
       endDay: 0,
-      description: `Prepare soil 2 weeks before planting. Incorporate organic matter. Climate: mean ${climate.annualMeanTemp}°C, annual rainfall ${climate.annualTotalRainfall}mm.`,
-      tasks: [
+      description: isFil
+        ? `Ihanda ang lupa 2 linggo bago magtanim. Ihalo ang mga organikong bagay. Klima: karaniwang temp ${climate.annualMeanTemp}°C, taunang ulan ${climate.annualTotalRainfall}mm.`
+        : `Prepare soil 2 weeks before planting. Incorporate organic matter. Climate: mean ${climate.annualMeanTemp}°C, annual rainfall ${climate.annualTotalRainfall}mm.`,
+      tasks: isFil ? [
+        "Magsagawa ng malalim na pag-aararo hanggang 20-25cm ang lalim",
+        "Pagsusuri ng pH ng lupa (target: 6.0-7.0 para sa karamihan ng pananim)",
+        "Maglagay ng basalyong kompost (5-10 tonelada/ha)",
+        `Maglagay ng basalyong ${fertPTotal}kg/ha P₂O₅ at ${fertKPerApp}kg/ha K₂O`,
+        "Tiyakin ang sapat na mga kanal para sa patubig at drainage",
+        "Pantayin ang lupain para sa pantay na pamamahagi ng tubig",
+      ] : [
         "Deep plow to 20-25cm depth",
         "Soil pH test (target 6.0-7.0 for most crops)",
         "Apply basal compost (5-10 tons/ha)",
@@ -990,124 +1018,207 @@ export function generateFarmingPlan(
         "Ensure adequate drainage channels",
         "Level field for uniform water distribution",
       ],
-      weatherConsiderations: "Avoid tillage in wet conditions. Soil should be moist but not waterlogged.",
-      inputsNeeded: ["Plow/tractor", "Compost", `Phosphate fertilizer (${fertPTotal}kg/ha)`, `Potash (${fertKPerApp}kg/ha)`, "pH meter"],
+      weatherConsiderations: isFil
+        ? "Iwasan ang pag-aararo sa napakabasang lupa. Dapat ay katamtamang basa ngunit hindi binabaha."
+        : "Avoid tillage in wet conditions. Soil should be moist but not waterlogged.",
+      inputsNeeded: isFil
+        ? ["Araro/Traktora", "Kompost", `Phosphate na abono (${fertPTotal}kg/ha)`, `Potash (${fertKPerApp}kg/ha)`, "pH meter"]
+        : ["Plow/tractor", "Compost", `Phosphate fertilizer (${fertPTotal}kg/ha)`, `Potash (${fertKPerApp}kg/ha)`, "pH meter"],
       priority: "critical",
     },
     {
       id: "stage-plant",
-      name: "Planting / Sowing",
+      name: isFil ? "Pagtatanim / Pagse-seminay" : "Planting / Sowing",
       type: "planting",
       startDay: 0,
       endDay: days.germination,
-      description: `Plant ${profile.name} at optimal spacing. GDD base: ${profile.gddBase}°C. Expected GDD to germination: ${profile.gddPhases.germination} GDD at local rate of ${avgGDD.toFixed(1)} GDD/day.`,
-      tasks: [
+      description: isFil
+        ? `Itanim ang ${profile.name} sa tamang agwat. Base GDD: ${profile.gddBase}°C. Inaasahang GDD sa pagsibol: ${profile.gddPhases.germination} GDD sa lokal na bilis na ${avgGDD.toFixed(1)} GDD/araw.`
+        : `Plant ${profile.name} at optimal spacing. GDD base: ${profile.gddBase}°C. Expected GDD to germination: ${profile.gddPhases.germination} GDD at local rate of ${avgGDD.toFixed(1)} GDD/day.`,
+      tasks: isFil ? [
+        `Itanim sa inirerekomendang agwat para sa ${profile.name}`,
+        "Gumamit ng sertipikado at walang sakit na binhi o tanim",
+        "Gamutin ang binhi gamit ang fungicide kung mayroon",
+        "Markahan nang malinaw ang mga hanay ng tanim",
+        "Irekord ang petsa ng pagtatanim at mapa ng bukid",
+      ] : [
         `Plant at recommended spacing for ${profile.name}`,
         "Use certified, disease-free seed or planting material",
         "Seed treatment with fungicide if available",
         "Mark rows clearly for mechanized operations",
         "Record planting date and field map",
       ],
-      weatherConsiderations: `Optimal planting temperature: ${profile.tempRange.min}–${profile.tempRange.max}°C. Avoid planting before heavy rain.`,
-      inputsNeeded: ["Certified seeds", "Seed treatment fungicide", "Planting tools", "Measuring tape"],
+      weatherConsiderations: isFil
+        ? `Pinakamagandang temperatura sa pagtatanim: ${profile.tempRange.min}–${profile.tempRange.max}°C. Iwasang magtanim bago ang malakas na ulan.`
+        : `Optimal planting temperature: ${profile.tempRange.min}–${profile.tempRange.max}°C. Avoid planting before heavy rain.`,
+      inputsNeeded: isFil
+        ? ["Sertipikadong binhi", "Fungicide panggamot sa binhi", "Kagamitan sa pagtatanim", "Pansukat"]
+        : ["Certified seeds", "Seed treatment fungicide", "Planting tools", "Measuring tape"],
       priority: "critical",
     },
     {
       id: "stage-germination",
-      name: "Germination & Emergence",
+      name: isFil ? "Pagsibol at Paglitaw" : "Germination & Emergence",
       type: "germination",
       startDay: days.germination,
       endDay: days.establishment,
-      description: `Seedling emergence and establishment. Accumulate ${profile.gddPhases.establishment} GDD for full establishment (${days.establishment} days at local rate).`,
-      tasks: [
+      description: isFil
+        ? `Pagsibol ng seedling at pagpapatatag. Mag-ipon ng ${profile.gddPhases.establishment} GDD para sa buong paglaki (${days.establishment} araw sa lokal na rate).`
+        : `Seedling emergence and establishment. Accumulate ${profile.gddPhases.establishment} GDD for full establishment (${days.establishment} days at local rate).`,
+      tasks: isFil ? [
+        "Bantayan ang antas ng pagsibol (target >85%)",
+        "Punan ang mga nawawalang punla sa loob ng unang linggo",
+        "Maglagay ng pre-emergence herbicide kung kinakailangan",
+        "Magsimula ng magaan na pagpapatubig upang mapanatili ang basang lupa",
+      ] : [
         "Monitor germination rate (target >85%)",
         "Gap-fill missing stands within first week",
         "Apply pre-emergence herbicide if needed",
         "Begin light irrigation to maintain soil moisture",
       ],
-      weatherConsiderations: "Protect from heavy rain and standing water. Maintain consistent soil moisture.",
-      inputsNeeded: ["Irrigation water", "Pre-emergence herbicide (optional)", "Replacement seeds"],
+      weatherConsiderations: isFil
+        ? "Protektahan mula sa malakas na ulan at nakatagong tubig. Panatilihing pantay ang basang lupa."
+        : "Protect from heavy rain and standing water. Maintain consistent soil moisture.",
+      inputsNeeded: isFil
+        ? ["Tubig sa patubig", "Pre-emergence herbicide (opsyonal)", "Karagdagang binhi"]
+        : ["Irrigation water", "Pre-emergence herbicide (optional)", "Replacement seeds"],
       priority: "high",
     },
     {
       id: "stage-vegetative",
-      name: "Vegetative Growth",
+      name: isFil ? "Paglaki ng Halaman" : "Vegetative Growth",
       type: "growth",
       startDay: days.establishment,
       endDay: days.vegetative,
-      description: `Rapid leaf and stem development. Apply first split of N fertilizer at ${days.establishment} DAP. Critical period: ${days.establishment}–${days.vegetative} days.`,
-      tasks: [
+      description: isFil
+        ? `Mabilis na paglaki ng dahon at sanga. Maglagay ng unang bahagi ng N abono sa ${days.establishment} DAP. Mahalagang panahon: ${days.establishment}–${days.vegetative} araw.`
+        : `Rapid leaf and stem development. Apply first split of N fertilizer at ${days.establishment} DAP. Critical period: ${days.establishment}–${days.vegetative} days.`,
+      tasks: isFil ? [
+        `Maglagay ng ${fertNPerApp}kg/ha N (unang bahagi ng ${profile.fertilizerProfile.splitApplications})`,
+        "Bantayan ang mga maagang sintomas ng peste at sakit",
+        "Pagtatabas at pagkontrol ng damo — mahalagang window para sa proteksyon ng ani",
+        `Panatilihin ang patubig para sa ${profile.waterRequirementMm}mm na pangangailangan sa panahon`,
+        "Mag-inspeksyon para sa mga peste linggo-linggo",
+      ] : [
         `Apply ${fertNPerApp}kg/ha N (split 1 of ${profile.fertilizerProfile.splitApplications})`,
         "Monitor for early pest and disease symptoms",
         "Weed control — critical window for yield protection",
         `Maintain irrigation for ${profile.waterRequirementMm}mm seasonal requirement`,
-        "Scout for ${profile.commonPests[0]?.name ?? 'pests'} weekly",
+        "Scout for pests weekly",
       ],
-      weatherConsiderations: `Watch for heat stress (>${profile.tempRange.max}°C) or cold stress (<${profile.tempRange.min}°C).`,
-      inputsNeeded: [`N fertilizer (${fertNPerApp}kg/ha)`, "Herbicide", "Irrigation equipment"],
+      weatherConsiderations: isFil
+        ? `Bantayan ang stress sa matinding init (>${profile.tempRange.max}°C) o lamig (<${profile.tempRange.min}°C).`
+        : `Watch for heat stress (>${profile.tempRange.max}°C) or cold stress (<${profile.tempRange.min}°C).`,
+      inputsNeeded: isFil
+        ? [`N abono (${fertNPerApp}kg/ha)`, "Pamatay-damo", "Kagamitan sa patubig"]
+        : [`N fertilizer (${fertNPerApp}kg/ha)`, "Herbicide", "Irrigation equipment"],
       priority: "high",
     },
     {
       id: "stage-flowering",
-      name: "Flowering & Pollination",
+      name: isFil ? "Pagbulaklak at Polinasyon" : "Flowering & Pollination",
       type: "fertilization",
       startDay: days.vegetative,
       endDay: days.flowering,
-      description: `Critical stage for yield determination. Apply second N split at ${days.vegetative} DAP. Protect from water stress and temperature extremes.`,
-      tasks: [
+      description: isFil
+        ? `Mahalagang yugto para sa pagtiyak ng ani. Maglagay ng ikalawang bahagi ng N abono sa ${days.vegetative} DAP. Protektahan mula sa kawalan ng tubig at matinding init.`
+        : `Critical stage for yield determination. Apply second N split at ${days.vegetative} DAP. Protect from water stress and temperature extremes.`,
+      tasks: isFil ? [
+        `Maglagay ng ${fertNPerApp}kg/ha N (ikalawang bahagi ng ${profile.fertilizerProfile.splitApplications})`,
+        `Maglagay ng ${fertKPerApp}kg/ha K₂O para mapabuti ang kalidad ng bulaklak/bunga`,
+        "Tiyakin ang sapat na kahalumigmigan — kritikal na yugto sa tubig",
+        "Bantayan ang mga sakit na dulot ng fungus sa basang panahon",
+        "Iwasan ang pag-spray ng pestisidyo sa oras ng polinasyon (6-10 AM)",
+      ] : [
         `Apply ${fertNPerApp}kg/ha N (split 2 of ${profile.fertilizerProfile.splitApplications})`,
         `Apply ${fertKPerApp}kg/ha K₂O to improve flower/fruit quality`,
         "Ensure adequate moisture — critical water stage",
         "Monitor for fungal diseases in humid conditions",
         "Avoid pesticide application during active pollination hours (6-10 AM)",
       ],
-      weatherConsiderations: `Avoid heat (>${profile.tempRange.max}°C) and water stress during flowering. Both reduce fruit/grain set.`,
-      inputsNeeded: [`N fertilizer (${fertNPerApp}kg/ha)`, `Potash (${fertKPerApp}kg/ha)`, "Fungicide (if needed)"],
+      weatherConsiderations: isFil
+        ? `Iwasan ang sobrang init (>${profile.tempRange.max}°C) at kawalan ng tubig sa panahon ng pagbulaklak.`
+        : `Avoid heat (>${profile.tempRange.max}°C) and water stress during flowering. Both reduce fruit/grain set.`,
+      inputsNeeded: isFil
+        ? [`N abono (${fertNPerApp}kg/ha)`, `Potash (${fertKPerApp}kg/ha)`, "Fungicide (kung kailangan)"]
+        : [`N fertilizer (${fertNPerApp}kg/ha)`, `Potash (${fertKPerApp}kg/ha)`, "Fungicide (if needed)"],
       priority: "critical",
     },
     {
       id: "stage-grain-set",
-      name: "Fruit / Grain Development",
+      name: isFil ? "Pag-unlad ng Bunga / Palay" : "Fruit / Grain Development",
       type: "monitoring",
       startDay: days.flowering,
       endDay: days.fruitSet,
-      description: `Fruit or grain filling phase. Maintain irrigation and nutrition. Apply potassium to improve quality and storage.`,
-      tasks: [
+      description: isFil
+        ? `Yugto ng pagpuno ng bunga o palay. Panatilihin ang patubig at nutrisyon. Maglagay ng potasyo upang mapabuti ang kalidad.`
+        : `Fruit or grain filling phase. Maintain irrigation and nutrition. Apply potassium to improve quality and storage.`,
+      tasks: isFil ? [
+        `Maglagay ng ${fertKPerApp}kg/ha K₂O para sa pagpapabuti ng kalidad`,
+        "Bantayan at kontrolin ang mga insekto na sumisira sa bunga/palay",
+        "Panatilihin ang sapat na tubig sa panahon ng pagpuno ng bunga/palay",
+        "Bantayan ang pagkalat ng sakit at gamutin kung lumampas sa threshold",
+      ] : [
         `Apply ${fertKPerApp}kg/ha K₂O for quality improvement`,
         "Monitor and control insect pests that damage fruit/grain",
         "Maintain adequate moisture during grain/fruit fill",
         "Monitor for disease progression and treat if threshold exceeded",
       ],
-      weatherConsiderations: "Protect from hailstorms. Excess rain may cause fungal issues. Drought at this stage reduces grain weight.",
-      inputsNeeded: [`Potash (${fertKPerApp}kg/ha)`, "Insecticide (if threshold exceeded)", "Irrigation water"],
+      weatherConsiderations: isFil
+        ? "Protektahan mula sa bagyo o ulan ng yelo. Ang sobrang ulan ay maaaring magdulot ng fungus."
+        : "Protect from hailstorms. Excess rain may cause fungal issues. Drought at this stage reduces grain weight.",
+      inputsNeeded: isFil
+        ? [`Potash (${fertKPerApp}kg/ha)`, "Insecticide (kung kailangan)", "Tubig sa patubig"]
+        : [`Potash (${fertKPerApp}kg/ha)`, "Insecticide (if threshold exceeded)", "Irrigation water"],
       priority: "high",
     },
     {
       id: "stage-maturity",
-      name: "Maturity & Pre-Harvest",
+      name: isFil ? "Paghihinog at Bago Mag-ani" : "Maturity & Pre-Harvest",
       type: "monitoring",
       startDay: days.fruitSet,
       endDay: days.maturity,
-      description: `Crop reaches physiological maturity. Reduce irrigation 2 weeks before harvest. Prepare harvest equipment.`,
-      tasks: [
+      description: isFil
+        ? `Ang pananim ay umabot na sa ganap na pagkahinog. Bawasan ang patubig 2 linggo bago mag-ani. Ihanda ang mga kagamitan sa pag-aani.`
+        : `Crop reaches physiological maturity. Reduce irrigation 2 weeks before harvest. Prepare harvest equipment.`,
+      tasks: isFil ? [
+        "Suriin ang mga pahiwatig ng pagkahinog ng pananim (kulay, tuyong timbang)",
+        "Bawasan ang pagpapatubig 10-14 araw bago mag-ani",
+        "Iayos ang mga manggagawa at kagamitan sa pag-aani",
+        "Ihanda ang pasilidad ng imbakan (malinis, may bentilasyon, walang peste)",
+        "Bantayan ang mga peste at sakit sa huling bahagi ng panahon",
+      ] : [
         "Assess crop maturity indicators (color, dry matter, moisture)",
         "Reduce irrigation 10-14 days before harvest",
         "Arrange harvest labor and equipment",
         "Prepare storage facility (clean, ventilated, pest-free)",
         "Monitor for late-season disease and insect pressure",
       ],
-      weatherConsiderations: "Dry weather preferred for harvest. Rain at maturity can cause quality loss and sprouting.",
-      inputsNeeded: ["Moisture meter", "Harvest equipment", "Storage bags", "Drying facility"],
+      weatherConsiderations: isFil
+        ? "Mas gusto ang tuyong panahon para sa pag-aani. Ang ulan sa pagkahinog ay nagdudulot ng pagkasira ng kalidad."
+        : "Dry weather preferred for harvest. Rain at maturity can cause quality loss and sprouting.",
+      inputsNeeded: isFil
+        ? ["Moisture meter", "Kagamitan sa pag-aani", "Sako sa pag-iimbak", "Patuyuan"]
+        : ["Moisture meter", "Harvest equipment", "Storage bags", "Drying facility"],
       priority: "high",
     },
     {
       id: "stage-harvest",
-      name: "Harvest & Post-Harvest",
+      name: isFil ? "Pag-aani at Pagkatapos Mag-ani" : "Harvest & Post-Harvest",
       type: "harvest",
       startDay: days.maturity,
       endDay: days.maturity + harvestWindow,
-      description: `Harvest window: ${harvestWindow} days. Expected yield: ${expectedYield}. Proper post-harvest handling critical for quality and marketability.`,
-      tasks: [
+      description: isFil
+        ? `Bintana sa pag-aani: ${harvestWindow} araw. Inaasahang ani: ${expectedYield}. Ang tamang paghawak pagkatapos mag-ani ay mahalaga para sa kalidad at pagbebenta.`
+        : `Harvest window: ${harvestWindow} days. Expected yield: ${expectedYield}. Proper post-harvest handling critical for quality and marketability.`,
+      tasks: isFil ? [
+        `Aniin sa tamang panahon ng pagkahinog para sa ${profile.name}`,
+        "Ingatan ang paghawak upang mabawasan ang pisikal na pagkasira",
+        "Ihiwalay at uriin batay sa laki at kalidad",
+        "Patuyuin sa ligtas na antas ng moisture para sa pag-iimbak",
+        "Magsagawa ng post-harvest treatment kung kinakailangan (fumigation, pagpapakintab)",
+        "Irekord ang aktwal na ani para sa mga talaan ng bukid",
+      ] : [
         `Harvest at optimal maturity for ${profile.name}`,
         "Handle carefully to minimize physical damage",
         "Sort and grade by size/quality",
@@ -1115,13 +1226,26 @@ export function generateFarmingPlan(
         "Apply post-harvest treatment if required (fumigation, waxing)",
         "Record actual yield for farm records",
       ],
-      weatherConsiderations: "Harvest on clear days when possible. Avoid harvest after heavy rain.",
-      inputsNeeded: ["Harvest tools/machinery", "Storage containers", "Weighing scale", "Post-harvest treatments"],
+      weatherConsiderations: isFil
+        ? "Mag-ani sa magagandang araw kapag maaari. Iwasang mag-ani agad pagkatapos ng malakas na ulan."
+        : "Harvest on clear days when possible. Avoid harvest after heavy rain.",
+      inputsNeeded: isFil
+        ? ["Kagamitan/makina sa pag-aani", "Lagayan ng ani", "Timbangan", "Panggamot sa post-harvest"]
+        : ["Harvest tools/machinery", "Storage containers", "Weighing scale", "Post-harvest treatments"],
       priority: "critical",
     },
   ];
 
-  const milestones = [
+  const milestones = isFil ? [
+    { day: 0, label: "Araw ng Pagtatanim", description: "Naitanim na ang pananim sa bukid", icon: "seedling" },
+    { day: days.germination, label: "Pagsibol", description: `Lumabas na ang mga seedling — ${profile.gddPhases.germination} GDD naipon`, icon: "seedling" },
+    { day: days.establishment, label: "Nakatatag na Tanim", description: "Ganap nang nakatayo ang mga tanim sa bukid", icon: "seedling" },
+    { day: days.establishment, label: "Unang Pag-aabono", description: `Maglagay ng ${fertNPerApp}kg/ha N`, icon: "fertilizer" },
+    { day: days.vegetative, label: "Rurok ng Paglaki", description: "Pinakamalaking sukat ng dahon — ikalawang pag-aabono", icon: "fertilizer" },
+    { day: days.flowering, label: "Pagbulaklak", description: "Kritikal na yugto ng reproduksyon", icon: "water" },
+    { day: days.fruitSet, label: "Pagbunga / Pagpapalay", description: "Pagsimula ng pagbuo ng bunga o palay", icon: "harvest" },
+    { day: days.maturity, label: "Pagkahinog / Pag-aani", description: `Inaasahang ani: ${expectedYield}`, icon: "harvest" },
+  ] : [
     { day: 0, label: "Planting Day", description: "Crop planted in field", icon: "seedling" },
     { day: days.germination, label: "Germination", description: `Seedlings emerge — ${profile.gddPhases.germination} GDD accumulated`, icon: "seedling" },
     { day: days.establishment, label: "Established", description: "Full crop stand established", icon: "seedling" },
@@ -1135,7 +1259,6 @@ export function generateFarmingPlan(
   const irrigScheduleDays = profile.criticalWaterStages.length;
   const irrigationSchedule = profile.criticalWaterStages.map((stage, i) => {
     const stageDay = [days.establishment, days.vegetative, days.flowering, days.fruitSet][i] ?? days.establishment + i * 20;
-    // Approximate tmax/tmin from annual mean (± 5°C diurnal range estimate)
     const et0 = computeET0(climate.lat ?? 14.6, climate.annualMeanTemp + 5, climate.annualMeanTemp - 5, doy);
     const kc = getCropCoefficient(["establishment", "vegetative", "flowering", "fruitOrGrainSet"][i] ?? "vegetative");
     const etCrop = et0 * kc;
@@ -1144,9 +1267,11 @@ export function generateFarmingPlan(
       stage,
       etCrop: Math.round(etCrop * 10) / 10,
       waterDepth: Math.round(etCrop * 7 * 10) / 10,
-      frequency: etCrop > 5 ? "Daily" : etCrop > 3 ? "Every 2 days" : "Every 3 days",
-      method: profile.waterRequirementMm > 800 ? "Flood / furrow irrigation" : "Drip or furrow",
-      notes: `Critical for ${stage}. ET₀ × Kc = ${etCrop.toFixed(1)} mm/day (Hargreaves-Samani method).`,
+      frequency: isFil ? (etCrop > 5 ? "Araw-araw" : etCrop > 3 ? "Tuwing 2 araw" : "Tuwing 3 araw") : (etCrop > 5 ? "Daily" : etCrop > 3 ? "Every 2 days" : "Every 3 days"),
+      method: profile.waterRequirementMm > 800 ? (isFil ? "Baha / patubig sa kanal" : "Flood / furrow irrigation") : (isFil ? "Tulo (drip) o patubig sa kanal" : "Drip or furrow"),
+      notes: isFil
+        ? `Mahalaga para sa yugto ng ${stage}. ET₀ × Kc = ${etCrop.toFixed(1)} mm/araw.`
+        : `Critical for ${stage}. ET₀ × Kc = ${etCrop.toFixed(1)} mm/day (Hargreaves-Samani method).`,
     };
   });
 
@@ -1155,22 +1280,34 @@ export function generateFarmingPlan(
     const nPerApp = Math.round(profile.fertilizerProfile.n_kg_ha / profile.fertilizerProfile.splitApplications);
     return {
       day: appDay,
-      product: i === 0 ? `Complete fertilizer (NPK) — Basal` : i === profile.fertilizerProfile.splitApplications - 1 ? `KCl / Muriate of Potash (K-dominant)` : `Urea or Ammonium Sulfate (N)`,
+      product: isFil
+        ? (i === 0 ? "Kumpletong abono (NPK) — Basal" : i === profile.fertilizerProfile.splitApplications - 1 ? "KCl / Muriate of Potash (K-dominant)" : "Urea o Ammonium Sulfate (N)")
+        : (i === 0 ? "Complete fertilizer (NPK) — Basal" : i === profile.fertilizerProfile.splitApplications - 1 ? "KCl / Muriate of Potash (K-dominant)" : "Urea or Ammonium Sulfate (N)"),
       rate: i === 0
         ? `${fertPTotal}kg/ha P₂O₅ + ${fertKPerApp}kg/ha K₂O + ${nPerApp}kg/ha N`
         : i === profile.fertilizerProfile.splitApplications - 1
           ? `${nPerApp}kg/ha N + ${fertKPerApp}kg/ha K₂O`
           : `${nPerApp}kg/ha N`,
-      method: i === 0 ? "Incorporate into soil at planting" : "Side-dress near root zone or broadcast",
-      purpose: i === 0 ? "Basal — root development and early growth" : i === profile.fertilizerProfile.splitApplications - 1 ? "Final — quality improvement and maturity support" : `Split ${i + 1} — vegetative growth and tillering`,
+      method: isFil
+        ? (i === 0 ? "Ihalo sa lupa sa pagtatanim" : "Ikalat sa tabi ng ugat o ilagay sa gilid")
+        : (i === 0 ? "Incorporate into soil at planting" : "Side-dress near root zone or broadcast"),
+      purpose: isFil
+        ? (i === 0 ? "Basal — pagpapataba ng ugat at maagang paglaki" : i === profile.fertilizerProfile.splitApplications - 1 ? "Huling abono — pagpapaganda ng kalidad at pagsuporta sa pagkahinog" : `Pagbababaw ${i + 1} — mabilis na paglaki ng dahon`)
+        : (i === 0 ? "Basal — root development and early growth" : i === profile.fertilizerProfile.splitApplications - 1 ? "Final — quality improvement and maturity support" : `Split ${i + 1} — vegetative growth and tillering`),
     };
   });
 
   const pestAlerts = profile.commonPests.map((pest) => ({
     name: pest.name,
-    riskPeriod: `When temp ${pest.tempTriggerMin}–${pest.tempTriggerMax}°C${pest.humidityTrigger ? ` + humidity >${pest.humidityTrigger}%` : ""}`,
-    symptoms: `Monitor fields when temperature is ${pest.tempTriggerMin}–${pest.tempTriggerMax}°C`,
-    treatment: "Scout weekly. Apply registered pesticide at economic threshold. Use IPM — biocontrol first.",
+    riskPeriod: isFil
+      ? `Kapag ang temperatura ay ${pest.tempTriggerMin}–${pest.tempTriggerMax}°C${pest.humidityTrigger ? ` + humidity >${pest.humidityTrigger}%` : ""}`
+      : `When temp ${pest.tempTriggerMin}–${pest.tempTriggerMax}°C${pest.humidityTrigger ? ` + humidity >${pest.humidityTrigger}%` : ""}`,
+    symptoms: isFil
+      ? `Suriin ang bukid kapag ang temperatura ay ${pest.tempTriggerMin}–${pest.tempTriggerMax}°C`
+      : `Monitor fields when temperature is ${pest.tempTriggerMin}–${pest.tempTriggerMax}°C`,
+    treatment: isFil
+      ? "Mag-inspeksyon linggo-linggo. Mag-spray ng rehistradong pestisidyo kapag lumampas sa threshold. Unahin ang biyolohikal na pamamaraan."
+      : "Scout weekly. Apply registered pesticide at economic threshold. Use IPM — biocontrol first.",
     riskActive: forecast.some(
       (d) =>
         d.tempMax >= pest.tempTriggerMin && d.tempMax <= pest.tempTriggerMax + 5 &&
@@ -1178,7 +1315,32 @@ export function generateFarmingPlan(
     ),
   }));
 
-  const weatherAdjustments = [
+  const weatherAdjustments = isFil ? [
+    {
+      trigger: `Temperatura > ${profile.tempRange.max}°C`,
+      impact: "Pagkalaglag ng bulaklak, pagbaba ng ani, heat stress",
+      affectedStages: ["flowering", "fruit-set"],
+      action: "Magpatubig sa maagang umaga para palamigin ang lupa. Maglagay ng shade net kung mayroon. Mag-spray ng foliar potassium.",
+    },
+    {
+      trigger: `Temperatura < ${profile.tempRange.min}°C`,
+      impact: "Mabagal na paglaki, pinsala sa lamig",
+      affectedStages: ["germination", "establishment"],
+      action: "Takpan ang mga punla ng row cover o mulch. Ipagpaliban ang pagtatanim hanggang uminit.",
+    },
+    {
+      trigger: "Malakas na ulan > 50mm/araw",
+      impact: "Pagkabalot sa tubig, pagkabagok ng ugat, pagkaanod ng nutrisyon",
+      affectedStages: ["establishment", "vegetative"],
+      action: "Buksan ang mga kanal ng drainage. Ipagpaliban ang pag-aabono ng 3-5 araw pagkatapos ng ulan.",
+    },
+    {
+      trigger: "Tagtuyot (walang ulan > 14 araw)",
+      impact: "Stress sa tubig, pagbaba ng ani",
+      affectedStages: ["flowering", "grain-fill"],
+      action: "Unahin ang pagpapatubig sa mga kritikal na yugto. Magmulch upang mabawasan ang pagkatuyo.",
+    },
+  ] : [
     {
       trigger: `Temperature > ${profile.tempRange.max}°C`,
       impact: "Flower drop, reduced fruit set, heat stress",
@@ -1224,7 +1386,9 @@ export function generateFarmingPlan(
       "USDA Agronomy Handbooks (open access)",
       "DA Philippines Crop Production Guides",
     ],
-    climateAdaptedNote: `Plan computed for ${location}: mean ${climate.annualMeanTemp}°C, ${climate.annualTotalRainfall}mm rainfall/year. Avg GDD rate: ${avgGDD.toFixed(1)}/day (base ${profile.gddBase}°C).`,
+    climateAdaptedNote: isFil
+      ? `Kinalkula ang plano para sa ${location}: karaniwang temp ${climate.annualMeanTemp}°C, ${climate.annualTotalRainfall}mm ulan/taon. Bilis ng GDD: ${avgGDD.toFixed(1)}/araw (base ${profile.gddBase}°C).`
+      : `Plan computed for ${location}: mean ${climate.annualMeanTemp}°C, ${climate.annualTotalRainfall}mm rainfall/year. Avg GDD rate: ${avgGDD.toFixed(1)}/day (base ${profile.gddBase}°C).`,
     stages,
     milestones,
     weatherAdjustments,

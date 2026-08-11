@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useSettings } from "@/hooks/use-settings";
 import { useToast } from "@/hooks/use-toast";
 
 function YoutubeIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -59,8 +60,19 @@ const SAMPLE_PROMPTS = [
   "Compost soil preparation for lowland rice farming",
 ];
 
+const SAMPLE_PROMPTS_FIL = [
+  "Paano magpalaki ng kamatis sa mainit at maulang panahon gamit ang organikong abono",
+  "Paggawa ng drip irrigation para sa maliit na gulayan sa bukid",
+  "Paggamit ng langis ng neem bilang puksain sa peste sa mga punong prutas",
+  "Sistemang hydroponics sa pagpapatubo ng letsugas sa tropikong klima",
+  "Paghahanda ng compost na lupa para sa pagtatanim ng palay sa mababang lupa",
+];
+
 export default function TutorialsPage() {
   const { toast } = useToast();
+  const { settings, t } = useSettings();
+  const isFil = settings.language === "fil";
+  const activeSamplePrompts = isFil ? SAMPLE_PROMPTS_FIL : SAMPLE_PROMPTS;
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
 
@@ -80,8 +92,8 @@ export default function TutorialsPage() {
     const query = (queryToSearch || searchQuery).trim();
     if (!query) {
       toast({
-        title: "Search query required",
-        description: "Please enter what farming tutorial you are looking for.",
+        title: isFil ? "Kailangan ng babasahin" : "Search query required",
+        description: isFil ? "Mangyaring ilagay kung anong tutorial sa pagsasaka ang iyong hinahanap." : "Please enter what farming tutorial you are looking for.",
         variant: "destructive",
       });
       return;
@@ -106,7 +118,7 @@ export default function TutorialsPage() {
       });
 
       if (!searchRes.ok) {
-        throw new Error("Failed to search YouTube videos.");
+        throw new Error(isFil ? "Bigo sa paghahanap ng mga video sa YouTube." : "Failed to search YouTube videos.");
       }
 
       const searchData = await searchRes.json();
@@ -116,7 +128,7 @@ export default function TutorialsPage() {
 
       if (fetchedVideos.length === 0) {
         setHasStrongMatch(false);
-        setNoMatchReason("No videos found matching your search query.");
+        setNoMatchReason(isFil ? "Walang nahanap na video na tumutugma sa iyong paghahanap." : "No videos found matching your search query.");
         return;
       }
 
@@ -125,11 +137,11 @@ export default function TutorialsPage() {
       const evalRes = await fetch("/api/tutorials/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, videos: fetchedVideos }),
+        body: JSON.stringify({ query, videos: fetchedVideos, lang: settings.language }),
       });
 
       if (!evalRes.ok) {
-        throw new Error("Grownox analysis encountered an issue.");
+        throw new Error(isFil ? "Nagkaroon ng problema sa pagsusuri ng Grownox AI." : "Grownox analysis encountered an issue.");
       }
 
       const evalData = await evalRes.json();
@@ -140,12 +152,12 @@ export default function TutorialsPage() {
     } catch (err: any) {
       console.error("Tutorial search error:", err);
       toast({
-        title: "Search Error",
-        description: err.message || "Failed to retrieve tutorial videos.",
+        title: isFil ? "Maling Paghahanap" : "Search Error",
+        description: err.message || (isFil ? "Bigo sa pagkuha ng mga tutorial video." : "Failed to retrieve tutorial videos."),
         variant: "destructive",
       });
       setHasStrongMatch(false);
-      setNoMatchReason("Could not retrieve videos due to network error. Please try again.");
+      setNoMatchReason(isFil ? "Hindi makuha ang mga video dahil sa problema sa koneksyon. Subukan ulit." : "Could not retrieve videos due to network error. Please try again.");
     } finally {
       setIsSearching(false);
       setIsAnalyzing(false);
@@ -164,7 +176,7 @@ export default function TutorialsPage() {
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString("en-US", {
+      return d.toLocaleDateString(isFil ? "fil-PH" : "en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -185,15 +197,17 @@ export default function TutorialsPage() {
         <div className="relative z-10 max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-2 bg-emerald-700/60 border border-emerald-500/40 text-emerald-200 text-xs font-semibold px-3 py-1 rounded-full backdrop-blur-xs">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Grownox Smart AI Video Ranking</span>
+            <span>{isFil ? "Pagsusuri ng Video ng Grownox AI" : "Grownox Smart AI Video Ranking"}</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Agriculture Tutorial Video Search
+            {isFil ? "Paghahanap ng Video Tutorial sa Pagsasaka" : "Agriculture Tutorial Video Search"}
           </h1>
 
           <p className="text-emerald-100 text-sm sm:text-base leading-relaxed">
-            Describe your exact agricultural challenge in plain language. Grownox will search YouTube for relevant tutorial videos and rigorously evaluate their title & description for exact topic, climate, and method matches.
+            {isFil
+              ? "Ilarawan ang iyong hamon sa pagsasaka sa simpleng pananalita. Hahanapin ng Grownox sa YouTube ang mga kaugnay na tutorial at susuriin ang pamagat at paglalarawan para sa pinaka-angkop na paksa, klima, at pamamaraan."
+              : "Describe your exact agricultural challenge in plain language. Grownox will search YouTube for relevant tutorial videos and rigorously evaluate their title & description for exact topic, climate, and method matches."}
           </p>
         </div>
       </div>
@@ -213,7 +227,7 @@ export default function TutorialsPage() {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="e.g., How to grow tomatoes in hot and humid weather using organic fertilizer"
+                placeholder={isFil ? "hal. Paano magtanim ng kamatis sa mainit at maulang panahon..." : "e.g., How to grow tomatoes in hot and humid weather using organic fertilizer"}
                 className="pl-10 h-12 text-sm bg-muted/40 focus-visible:bg-background rounded-xl border-border/80"
               />
             </div>
@@ -225,12 +239,12 @@ export default function TutorialsPage() {
               {isSearching ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Searching...</span>
+                  <span>{isFil ? "Naghahanap..." : "Searching..."}</span>
                 </>
               ) : (
                 <>
                   <Search className="h-4 w-4" />
-                  <span>Search Videos</span>
+                  <span>{isFil ? "Maghanap ng Video" : "Search Videos"}</span>
                 </>
               )}
             </Button>
@@ -240,10 +254,10 @@ export default function TutorialsPage() {
           <div className="space-y-2 pt-1">
             <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
               <Sparkles className="h-3 w-3 text-amber-500" />
-              <span>Try natural language examples:</span>
+              <span>{isFil ? "Subukan ang mga halimbawa:" : "Try natural language examples:"}</span>
             </span>
             <div className="flex flex-wrap gap-2">
-              {SAMPLE_PROMPTS.map((prompt, idx) => (
+              {activeSamplePrompts.map((prompt, idx) => (
                 <button
                   key={idx}
                   type="button"

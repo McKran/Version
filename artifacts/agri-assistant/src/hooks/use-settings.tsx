@@ -42,16 +42,37 @@ const DEFAULT_SETTINGS: AppSettings = {
   preferredCrops: [],
   preferredCropIds: [],
   targetMarket: "local",
-  theme: "system",
+  theme: "light",
 };
 
 const STORAGE_KEY = "agri_settings_v7";
 
+function applyTheme(theme: "light" | "dark" | "system") {
+  if (typeof document === "undefined") return;
+  if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else if (theme === "system") {
+    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", isDark);
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+}
+
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.theme === "system" || !parsed.theme) {
+        parsed.theme = "light";
+      }
+      const settings = { ...DEFAULT_SETTINGS, ...parsed };
+      applyTheme(settings.theme);
+      return settings;
+    }
   } catch {}
+  applyTheme(DEFAULT_SETTINGS.theme);
   return DEFAULT_SETTINGS;
 }
 
@@ -147,13 +168,4 @@ export function useSettings() {
   const context = useContext(SettingsContext);
   if (!context) throw new Error("useSettings must be used within SettingsProvider");
   return context;
-}
-
-function applyTheme(theme: "light" | "dark" | "system") {
-  if (theme === "system") {
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.classList.toggle("dark", isDark);
-  } else {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }
 }

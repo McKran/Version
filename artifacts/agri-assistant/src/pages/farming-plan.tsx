@@ -74,10 +74,10 @@ interface PlanResponse {
   location?: { display: string; lat?: number; lon?: number };
 }
 
-function RiskBadge({ level }: { level: string }) {
-  if (level === "high") return <Badge className="bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 gap-1"><TriangleAlert className="h-3 w-3" /> High Risk</Badge>;
-  if (level === "medium") return <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 gap-1"><TriangleAlert className="h-3 w-3" /> Medium Risk</Badge>;
-  return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 gap-1"><CheckCircle2 className="h-3 w-3" /> Low Risk</Badge>;
+function RiskBadge({ level, isFil }: { level: string; isFil?: boolean }) {
+  if (level === "high") return <Badge className="bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 gap-1"><TriangleAlert className="h-3 w-3" /> {isFil ? "Mataas na Panganib" : "High Risk"}</Badge>;
+  if (level === "medium") return <Badge className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 gap-1"><TriangleAlert className="h-3 w-3" /> {isFil ? "Katamtamang Panganib" : "Medium Risk"}</Badge>;
+  return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 gap-1"><CheckCircle2 className="h-3 w-3" /> {isFil ? "Mababang Panganib" : "Low Risk"}</Badge>;
 }
 
 function PriorityDot({ priority }: { priority: string }) {
@@ -86,13 +86,13 @@ function PriorityDot({ priority }: { priority: string }) {
   return <span className="h-2 w-2 rounded-full bg-blue-400 inline-block" />;
 }
 
-function StageCard({ stage, plantingDate }: { stage: FarmingStage; plantingDate: string }) {
+function StageCard({ stage, plantingDate, isFil }: { stage: FarmingStage; plantingDate: string; isFil?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const config = STAGE_TYPE_CONFIG[stage.type] ?? STAGE_TYPE_CONFIG.monitoring;
   const Icon = config.icon;
   const startDate = new Date(plantingDate); startDate.setDate(startDate.getDate() + stage.startDay);
   const endDate = new Date(plantingDate); endDate.setDate(endDate.getDate() + stage.endDay);
-  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const fmt = (d: Date) => d.toLocaleDateString(isFil ? "fil-PH" : "en-US", { month: "short", day: "numeric" });
   return (
     <div className={`rounded-2xl border p-4 ${config.bg} transition-all`}>
       <div className="flex items-start gap-3 cursor-pointer select-none" onClick={() => setExpanded(e => !e)}>
@@ -105,7 +105,7 @@ function StageCard({ stage, plantingDate }: { stage: FarmingStage; plantingDate:
             <PriorityDot priority={stage.priority} />
           </div>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className={`text-xs font-medium ${config.color}`}>Day {stage.startDay}–{stage.endDay}</span>
+            <span className={`text-xs font-medium ${config.color}`}>{isFil ? "Araw" : "Day"} {stage.startDay}–{stage.endDay}</span>
             <span className="text-xs text-muted-foreground">· {fmt(startDate)} → {fmt(endDate)}</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{stage.description}</p>
@@ -118,7 +118,7 @@ function StageCard({ stage, plantingDate }: { stage: FarmingStage; plantingDate:
         <div className="mt-4 space-y-3 border-t border-white/40 dark:border-black/20 pt-4">
           {stage.tasks.length > 0 && (
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Tasks</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{isFil ? "Mga Gawain" : "Tasks"}</div>
               <ul className="space-y-1.5">
                 {stage.tasks.map((task, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs">
@@ -131,7 +131,7 @@ function StageCard({ stage, plantingDate }: { stage: FarmingStage; plantingDate:
           )}
           {stage.inputsNeeded && stage.inputsNeeded.length > 0 && (
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Inputs Needed</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{isFil ? "Mga Kailangang Gamit" : "Inputs Needed"}</div>
               <div className="flex flex-wrap gap-1.5">
                 {stage.inputsNeeded.map((input, i) => <Badge key={i} variant="secondary" className="text-xs font-normal">{input}</Badge>)}
               </div>
@@ -149,7 +149,7 @@ function StageCard({ stage, plantingDate }: { stage: FarmingStage; plantingDate:
   );
 }
 
-function TimelineBar({ plan }: { plan: FarmingPlan }) {
+function TimelineBar({ plan, isFil }: { plan: FarmingPlan; isFil?: boolean }) {
   const total = plan.totalGrowingDays;
   const colors: Record<string, string> = {
     preparation: "bg-amber-400", planting: "bg-green-500", germination: "bg-lime-400",
@@ -159,7 +159,7 @@ function TimelineBar({ plan }: { plan: FarmingPlan }) {
   return (
     <div>
       <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-        <span>Day 0 · Planting</span><span>Day {total} · Harvest</span>
+        <span>{isFil ? "Araw 0 · Pagtatanim" : "Day 0 · Planting"}</span><span>{isFil ? `Araw ${total} · Pag-aani` : `Day ${total} · Harvest`}</span>
       </div>
       <div className="relative h-6 bg-muted rounded-full overflow-hidden flex">
         {plan.stages.map((stage) => {
@@ -245,6 +245,7 @@ export default function FarmingPlan() {
           lat,
           lon,
           locationName: locationDisplay,
+          lang: settings.language,
           // Pass legacy display fields for a richer label if available
           cityName: settings.cityName || undefined,
           provinceName: settings.provinceName || undefined,
@@ -268,22 +269,24 @@ export default function FarmingPlan() {
 
   const plan = result?.plan;
 
+  const isFil = settings.language === "fil";
+
   const tabs = [
-    { id: "timeline", label: "Timeline", icon: Clock },
-    { id: "weather", label: "Weather", icon: Cloud },
-    { id: "fertilizer", label: "Fertilizer", icon: FlaskConical },
-    { id: "pests", label: "Pests", icon: Bug },
-    { id: "adjustments", label: "Adjustments", icon: RefreshCw },
+    { id: "timeline", label: isFil ? "Timeline" : "Timeline", icon: Clock },
+    { id: "weather", label: isFil ? "Panahon" : "Weather", icon: Cloud },
+    { id: "fertilizer", label: isFil ? "Abono / Pataba" : "Fertilizer", icon: FlaskConical },
+    { id: "pests", label: isFil ? "Peste at Sakit" : "Pests", icon: Bug },
+    { id: "adjustments", label: isFil ? "Mga Pag-aangkop" : "Adjustments", icon: RefreshCw },
   ] as const;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2 text-stone-900 dark:text-stone-100">
-          <ClipboardList className="h-6 w-6 text-emerald-800 dark:text-emerald-400" /> Farm Planner
+          <ClipboardList className="h-6 w-6 text-emerald-800 dark:text-emerald-400" /> {isFil ? "Plano sa Pagtatanim" : "Farm Planner"}
         </h1>
         <p className="text-stone-600 dark:text-stone-400 text-sm mt-1">
-          GDD-based farming schedules using real open climate data — no AI, no guesswork.
+          {isFil ? "Mga iskedyul sa pagsasaka batay sa GDD gamit ang totoong datos ng klima — walang hula." : "GDD-based farming schedules using real open climate data — no AI, no guesswork."}
         </p>
       </div>
 
@@ -294,9 +297,9 @@ export default function FarmingPlan() {
           <div className="text-sm font-semibold truncate text-emerald-950 dark:text-emerald-200">{locationDisplay}</div>
           <div className="text-xs text-emerald-800/80 dark:text-emerald-300 flex items-center gap-1.5 flex-wrap mt-0.5">
             <ThermometerSun className="h-3 w-3 text-emerald-700 dark:text-emerald-400" />
-            <span>Weather data from Open-Meteo for {lat.toFixed(3)}°N, {lon.toFixed(3)}°E</span>
+            <span>{isFil ? `Datos ng panahon mula sa Open-Meteo para sa ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E` : `Weather data from Open-Meteo for ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E`}</span>
             {settings.cityLat != null && (
-              <Badge variant="secondary" className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200">GPS set</Badge>
+              <Badge variant="secondary" className="text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200">{isFil ? "Nakatakda ang GPS" : "GPS set"}</Badge>
             )}
           </div>
         </div>
@@ -306,10 +309,10 @@ export default function FarmingPlan() {
       <Card className="border border-emerald-100 dark:border-emerald-900/40 shadow-xs">
         <CardHeader className="pb-4">
           <CardTitle className="text-base flex items-center gap-2 text-stone-900 dark:text-stone-100">
-            <Sprout className="h-4 w-4 text-emerald-800 dark:text-emerald-400" /> Generate Farming Plan
+            <Sprout className="h-4 w-4 text-emerald-800 dark:text-emerald-400" /> {isFil ? "Gumawa ng Plano sa Pagtatanim" : "Generate Farming Plan"}
           </CardTitle>
           <CardDescription className="text-xs text-stone-500 dark:text-stone-400">
-            Real ERA5 climate data for your location · GDD engine · No AI — pure science.
+            {isFil ? "Totoong datos ng klima para sa iyong lokasyon · GDD engine" : "Real ERA5 climate data for your location · GDD engine · No AI — pure science."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -317,7 +320,7 @@ export default function FarmingPlan() {
           {/* Crop Selection */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 block mb-2">
-              Select Crop
+              {isFil ? "PUMILI NG PANANIM" : "Select Crop"}
             </label>
 
             {/* Category filter tabs */}
@@ -330,7 +333,7 @@ export default function FarmingPlan() {
                       ? "bg-emerald-800 text-white border-emerald-800 shadow-xs"
                       : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700"
                   }`}
-                >All</button>
+                >{isFil ? "Lahat" : "All"}</button>
                 {categoriesInDb.map(cat => (
                   <button key={cat}
                     onClick={() => { setActiveCatFilter(cat); setShowAllCrops(false); }}
@@ -347,7 +350,7 @@ export default function FarmingPlan() {
             {/* Crop grid */}
             {cropsLoading ? (
               <div className="flex items-center gap-2 text-sm text-stone-500 py-4">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-700" /> Loading crops from database…
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-700" /> {isFil ? "Ikinakarga ang mga pananim mula sa database..." : "Loading crops from database…"}
               </div>
             ) : (
               <>
@@ -371,8 +374,8 @@ export default function FarmingPlan() {
                     className="text-xs text-emerald-800 dark:text-emerald-400 font-medium hover:underline mt-1"
                   >
                     {showAllCrops
-                      ? "Show fewer crops"
-                      : `Show all ${filteredCrops.length} crops in this category`}
+                      ? (isFil ? "Ipakita ang mas kaunting pananim" : "Show fewer crops")
+                      : (isFil ? `Ipakita ang lahat ng ${filteredCrops.length} na pananim sa kategoryang ito` : `Show all ${filteredCrops.length} crops in this category`)}
                   </button>
                 )}
               </>
@@ -380,7 +383,7 @@ export default function FarmingPlan() {
 
             <input
               type="text" value={crop} onChange={(e) => setCrop(e.target.value)}
-              placeholder="Or type any crop name…"
+              placeholder={isFil ? "O mag-type ng pangalan ng pananim..." : "Or type any crop name…"}
               className="w-full mt-3 px-3 py-2 rounded-xl border bg-muted/40 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:bg-background"
             />
           </div>
@@ -388,7 +391,7 @@ export default function FarmingPlan() {
           {/* Planting Date */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
-              Planting Date
+              {isFil ? "PETSA NG PAGTATANIM" : "Planting Date"}
             </label>
             <div className="relative max-w-xs">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -401,7 +404,7 @@ export default function FarmingPlan() {
           {/* Preferred crops from profile */}
           {settings.preferredCrops.length > 0 && (
             <div>
-              <label className="text-xs text-muted-foreground block mb-2">Your crops from profile:</label>
+              <label className="text-xs text-muted-foreground block mb-2">{isFil ? "Mga pananim mo mula sa profile:" : "Your crops from profile:"}</label>
               <div className="flex flex-wrap gap-1.5">
                 {settings.preferredCrops.map((c) => (
                   <button key={c} onClick={() => setCrop(c)}
@@ -422,16 +425,16 @@ export default function FarmingPlan() {
 
           <Button onClick={handleGenerate} disabled={!crop || !plantingDate || loading} className="w-full gap-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold shadow-xs" size="lg">
             {loading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Generating Plan…</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> {isFil ? "Gumagawa ng Plano..." : "Generating Plan…"}</>
             ) : (
-              <><Zap className="h-4 w-4" /> Generate Plan for {settings.cityName || settings.provinceName || "My Farm"}</>
+              <><Zap className="h-4 w-4" /> {isFil ? `Gumawa ng Plano para sa ${settings.cityName || settings.provinceName || "Aking Bukid"}` : `Generate Plan for ${settings.cityName || settings.provinceName || "My Farm"}`}</>
             )}
           </Button>
 
           {loading && (
             <div className="text-center text-xs text-muted-foreground space-y-1">
-              <p>Fetching ERA5 climate history and 16-day forecast from Open-Meteo…</p>
-              <p>Computing GDD accumulation for {settings.cityName || locationDisplay}…</p>
+              <p>{isFil ? "Kumukuha ng datos ng klima at pahiwatig mula sa Open-Meteo..." : "Fetching ERA5 climate history and 16-day forecast from Open-Meteo…"}</p>
+              <p>{isFil ? `Kina-calculate ang akumulasyon ng GDD para sa ${settings.cityName || locationDisplay}...` : `Computing GDD accumulation for ${settings.cityName || locationDisplay}…`}</p>
             </div>
           )}
         </CardContent>
@@ -492,28 +495,28 @@ export default function FarmingPlan() {
                   {/* KPI Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-white/90 dark:bg-stone-900/90 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/70 shadow-2xs">
-                      <div className="text-xs text-stone-600 dark:text-stone-400 font-medium">Total Cycle</div>
-                      <div className="text-xl font-extrabold text-emerald-800 dark:text-emerald-400">{plan.totalGrowingDays} Days</div>
+                      <div className="text-xs text-stone-600 dark:text-stone-400 font-medium">{isFil ? "Kabuuan ng Siklo" : "Total Cycle"}</div>
+                      <div className="text-xl font-extrabold text-emerald-800 dark:text-emerald-400">{plan.totalGrowingDays} {isFil ? "Araw" : "Days"}</div>
                     </div>
                     <div className="bg-white/90 dark:bg-stone-900/90 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/70 shadow-2xs">
-                      <div className="text-xs text-stone-600 dark:text-stone-400 font-medium">Phases</div>
-                      <div className="text-xl font-extrabold text-emerald-800 dark:text-emerald-400">{plan.stages.length} Stages</div>
+                      <div className="text-xs text-stone-600 dark:text-stone-400 font-medium">{isFil ? "Mga Yugto" : "Phases"}</div>
+                      <div className="text-xl font-extrabold text-emerald-800 dark:text-emerald-400">{plan.stages.length} {isFil ? "Yugto" : "Stages"}</div>
                     </div>
                     <div className="bg-white/90 dark:bg-stone-900/90 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/70 shadow-2xs">
-                      <div className="text-xs text-stone-600 dark:text-stone-400 font-medium">Harvest Window</div>
-                      <div className="text-sm font-bold text-amber-700 dark:text-amber-400 mt-1">Day {plan.estimatedHarvestStart}–{plan.estimatedHarvestEnd}</div>
+                      <div className="text-xs text-stone-600 dark:text-stone-400 font-medium">{isFil ? "Panahon ng Pag-aani" : "Harvest Window"}</div>
+                      <div className="text-sm font-bold text-amber-700 dark:text-amber-400 mt-1">{isFil ? "Araw" : "Day"} {plan.estimatedHarvestStart}–{plan.estimatedHarvestEnd}</div>
                     </div>
                     <div className="bg-white/90 dark:bg-stone-900/90 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/70 shadow-2xs">
-                      <div className="text-xs text-stone-600 dark:text-stone-400 font-medium">Expected Yield</div>
-                      <div className="text-sm font-bold text-emerald-700 dark:text-emerald-300 truncate mt-1">{plan.expectedYield || "Standard"}</div>
+                      <div className="text-xs text-stone-600 dark:text-stone-400 font-medium">{t.expectedYield}</div>
+                      <div className="text-sm font-bold text-emerald-700 dark:text-emerald-300 truncate mt-1">{plan.expectedYield || (isFil ? "Karaniwan" : "Standard")}</div>
                     </div>
                   </div>
 
-                  <TimelineBar plan={plan} />
+                  <TimelineBar plan={plan} isFil={isFil} />
 
                   {/* High-level stage list */}
                   <div className="space-y-2 pt-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">Stage Summary</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">{isFil ? "Buod ng mga Yugto" : "Stage Summary"}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {plan.stages.map((stg) => {
                         const cfg = STAGE_TYPE_CONFIG[stg.type] ?? STAGE_TYPE_CONFIG.monitoring;
@@ -526,11 +529,11 @@ export default function FarmingPlan() {
                               </div>
                               <div className="min-w-0">
                                 <div className="font-bold text-xs truncate text-stone-900 dark:text-stone-100">{stg.name}</div>
-                                <div className={`text-[11px] font-mono ${cfg.color}`}>Day {stg.startDay}–{stg.endDay}</div>
+                                <div className={`text-[11px] font-mono ${cfg.color}`}>{isFil ? "Araw" : "Day"} {stg.startDay}–{stg.endDay}</div>
                               </div>
                             </div>
                             <Badge variant="outline" className="text-[10px] shrink-0 bg-white/80 dark:bg-stone-900/90 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 font-semibold">
-                              {stg.tasks.length} tasks
+                              {stg.tasks.length} {isFil ? "gawain" : "tasks"}
                             </Badge>
                           </div>
                         );
@@ -553,7 +556,7 @@ export default function FarmingPlan() {
                       {allCrops.find(c => c.cropName.toLowerCase() === plan.crop.toLowerCase())?.emoji ?? "🌱"}
                     </span>
                     <h2 className="text-xl font-bold capitalize">{plan.crop}</h2>
-                    <RiskBadge level={plan.weatherRiskLevel} />
+                    <RiskBadge level={plan.weatherRiskLevel} isFil={isFil} />
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <MapPin className="h-3 w-3" />
@@ -561,22 +564,22 @@ export default function FarmingPlan() {
                   </div>
                   {plan.expectedYield && (
                     <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                      Expected yield: {plan.expectedYield}
+                      {t.expectedYield}: {plan.expectedYield}
                     </div>
                   )}
                 </div>
                 <div className="flex gap-4 flex-wrap">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary">{plan.totalGrowingDays}</div>
-                    <div className="text-[10px] text-muted-foreground">Total Days</div>
+                    <div className="text-[10px] text-muted-foreground">{isFil ? "Kabuuan ng Araw" : "Total Days"}</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-emerald-600">{plan.stages.length}</div>
-                    <div className="text-[10px] text-muted-foreground">Stages</div>
+                    <div className="text-[10px] text-muted-foreground">{isFil ? "Mga Yugto" : "Stages"}</div>
                   </div>
                 </div>
               </div>
-              <div className="mt-4"><TimelineBar plan={plan} /></div>
+              <div className="mt-4"><TimelineBar plan={plan} isFil={isFil} /></div>
               {plan.weatherRiskNotes && (
                 <div className="mt-3 flex items-start gap-2 text-xs text-muted-foreground bg-white/50 dark:bg-black/20 rounded-xl p-3">
                   <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
@@ -619,7 +622,7 @@ export default function FarmingPlan() {
               {plan.milestones.length > 0 && (
                 <Card className="border-none shadow-sm">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Key Milestones</CardTitle>
+                    <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> {isFil ? "Mga Mahalagang Milestones" : "Key Milestones"}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="relative">
@@ -636,8 +639,8 @@ export default function FarmingPlan() {
                               <div className="flex-1 min-w-0 pb-1">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-semibold text-sm">{m.label}</span>
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">Day {m.day}</Badge>
-                                  <span className="text-xs text-muted-foreground">{date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">{isFil ? "Araw" : "Day"} {m.day}</Badge>
+                                  <span className="text-xs text-muted-foreground">{date.toLocaleDateString(isFil ? "fil-PH" : "en-US", { month: "short", day: "numeric" })}</span>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{m.description}</p>
                               </div>
@@ -650,9 +653,9 @@ export default function FarmingPlan() {
                 </Card>
               )}
               <div>
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">All Stages ({plan.stages.length})</div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{isFil ? `Lahat ng Yugto (${plan.stages.length})` : `All Stages (${plan.stages.length})`}</div>
                 <div className="space-y-3">
-                  {plan.stages.map(stage => <StageCard key={stage.id} stage={stage} plantingDate={plan.plantingDate} />)}
+                  {plan.stages.map(stage => <StageCard key={stage.id} stage={stage} plantingDate={plan.plantingDate} isFil={isFil} />)}
                 </div>
               </div>
             </div>
@@ -662,8 +665,8 @@ export default function FarmingPlan() {
           {activeTab === "weather" && (
             <Card className="border-none shadow-sm bg-gradient-to-br from-sky-50 to-blue-100/60 dark:from-sky-950/40 dark:to-blue-950/20">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2"><Cloud className="h-4 w-4 text-blue-500" /> 16-Day Forecast</CardTitle>
-                <CardDescription className="text-xs">Used to calibrate your plan's risk assessment · From Open-Meteo</CardDescription>
+                <CardTitle className="text-sm flex items-center gap-2"><Cloud className="h-4 w-4 text-blue-500" /> {isFil ? "16-Araw na Ulat ng Panahon" : "16-Day Forecast"}</CardTitle>
+                <CardDescription className="text-xs">{isFil ? "Ginagamit upang ayusin ang pagtatasa ng panganib sa iyong plano · Mula sa Open-Meteo" : "Used to calibrate your plan's risk assessment · From Open-Meteo"}</CardDescription>
               </CardHeader>
               <CardContent>
                 {result?.weatherData?.daily ? (
@@ -671,7 +674,7 @@ export default function FarmingPlan() {
                     <div className="flex gap-2 pb-1 min-w-max px-1">
                       {result.weatherData.daily.dates?.slice(0, 10).map((date, i) => {
                         const d = new Date(date);
-                        const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                        const label = d.toLocaleDateString(isFil ? "fil-PH" : "en-US", { weekday: "short", month: "short", day: "numeric" });
                         return (
                           <div key={date} className="bg-white/60 dark:bg-black/20 rounded-xl p-2.5 text-center min-w-[80px]">
                             <div className="text-[10px] text-muted-foreground mb-1">{label}</div>
@@ -688,7 +691,7 @@ export default function FarmingPlan() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-6">Weather data not available for this plan.</p>
+                  <p className="text-sm text-muted-foreground text-center py-6">{isFil ? "Walang data ng panahon para sa planong ito." : "Weather data not available for this plan."}</p>
                 )}
               </CardContent>
             </Card>
@@ -698,8 +701,8 @@ export default function FarmingPlan() {
           {activeTab === "fertilizer" && (
             <Card className="border-none shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2"><FlaskConical className="h-4 w-4 text-blue-500" /> Fertilizer Schedule</CardTitle>
-                <CardDescription>Application timing based on crop growth stages</CardDescription>
+                <CardTitle className="text-sm flex items-center gap-2"><FlaskConical className="h-4 w-4 text-blue-500" /> {isFil ? "Iskedyul ng Pag-aabono" : "Fertilizer Schedule"}</CardTitle>
+                <CardDescription>{isFil ? "Oras ng paglalagay ng abono batay sa yugto ng paglaki" : "Application timing based on crop growth stages"}</CardDescription>
               </CardHeader>
               <CardContent>
                 {plan.fertilizerSchedule && plan.fertilizerSchedule.length > 0 ? (
@@ -713,14 +716,14 @@ export default function FarmingPlan() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-sm">{item.product}</div>
-                            <div className="text-xs text-muted-foreground mt-0.5">{date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {item.rate} · {item.method}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{date.toLocaleDateString(isFil ? "fil-PH" : "en-US", { month: "short", day: "numeric" })} · {item.rate} · {item.method}</div>
                             <div className="text-xs text-blue-700 dark:text-blue-400 mt-1">{item.purpose}</div>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                ) : <p className="text-sm text-muted-foreground text-center py-6">No fertilizer schedule in this plan.</p>}
+                ) : <p className="text-sm text-muted-foreground text-center py-6">{isFil ? "Walang iskedyul ng abono sa planong ito." : "No fertilizer schedule in this plan."}</p>}
               </CardContent>
             </Card>
           )}
@@ -729,8 +732,8 @@ export default function FarmingPlan() {
           {activeTab === "pests" && (
             <Card className="border-none shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2"><Shield className="h-4 w-4 text-rose-500" /> Pest & Disease Alerts</CardTitle>
-                <CardDescription>Common threats to monitor during the growing cycle</CardDescription>
+                <CardTitle className="text-sm flex items-center gap-2"><Shield className="h-4 w-4 text-rose-500" /> {isFil ? "Banta ng Peste at Sakit" : "Pest & Disease Alerts"}</CardTitle>
+                <CardDescription>{isFil ? "Mga karaniwang banta na dapat bantayan sa panahon ng pagtatanim" : "Common threats to monitor during the growing cycle"}</CardDescription>
               </CardHeader>
               <CardContent>
                 {plan.pestAlerts && plan.pestAlerts.length > 0 ? (
@@ -741,18 +744,18 @@ export default function FarmingPlan() {
                           <div className="font-semibold text-sm flex items-center gap-2">
                             <Bug className={`h-4 w-4 ${pest.riskActive ? "text-rose-500" : "text-muted-foreground"}`} />
                             {pest.name}
-                            {pest.riskActive && <Badge className="text-[10px] bg-rose-100 text-rose-700 border-rose-200">Active Risk</Badge>}
+                            {pest.riskActive && <Badge className="text-[10px] bg-rose-100 text-rose-700 border-rose-200">{isFil ? "Aktibong Banta" : "Active Risk"}</Badge>}
                           </div>
                           <Badge variant="outline" className="text-[10px] text-muted-foreground">{pest.riskPeriod}</Badge>
                         </div>
                         <div className="text-xs text-muted-foreground space-y-1">
-                          <p><span className="font-medium">Symptoms:</span> {pest.symptoms}</p>
-                          <p><span className="font-medium">Treatment:</span> {pest.treatment}</p>
+                          <p><span className="font-medium">{isFil ? "Mga Sintomas:" : "Symptoms:"}</span> {pest.symptoms}</p>
+                          <p><span className="font-medium">{isFil ? "Paggamot / Aksyon:" : "Treatment:"}</span> {pest.treatment}</p>
                         </div>
                       </div>
                     ))}
                   </div>
-                ) : <p className="text-sm text-muted-foreground text-center py-6">No specific pest alerts for this plan.</p>}
+                ) : <p className="text-sm text-muted-foreground text-center py-6">{isFil ? "Walang nakatalang banta ng peste para sa planong ito." : "No specific pest alerts for this plan."}</p>}
               </CardContent>
             </Card>
           )}
@@ -761,8 +764,8 @@ export default function FarmingPlan() {
           {activeTab === "adjustments" && (
             <Card className="border-none shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2"><RefreshCw className="h-4 w-4 text-amber-500" /> Weather Adjustment Rules</CardTitle>
-                <CardDescription>How your plan adapts to changing weather conditions</CardDescription>
+                <CardTitle className="text-sm flex items-center gap-2"><RefreshCw className="h-4 w-4 text-amber-500" /> {isFil ? "Mga Alituntunin sa Pag-aangkop sa Panahon" : "Weather Adjustment Rules"}</CardTitle>
+                <CardDescription>{isFil ? "Paano umaangkop ang iyong plano kapag nagbago ang panahon" : "How your plan adapts to changing weather conditions"}</CardDescription>
               </CardHeader>
               <CardContent>
                 {plan.weatherAdjustments.length > 0 ? (
@@ -781,15 +784,15 @@ export default function FarmingPlan() {
                       </div>
                     ))}
                   </div>
-                ) : <p className="text-sm text-muted-foreground text-center py-6">No weather adjustment rules in this plan.</p>}
+                ) : <p className="text-sm text-muted-foreground text-center py-6">{isFil ? "Walang alituntunin sa pag-aangkop sa planong ito." : "No weather adjustment rules in this plan."}</p>}
               </CardContent>
             </Card>
           )}
 
           <p className="text-[10px] text-muted-foreground text-center">
-            Plan generated {new Date(result.generatedAt).toLocaleString()} ·
-            Weather from Open-Meteo ERA5 · GDD model from FAO Paper No. 56 ·
-            Always validate with a local agronomist before major farming decisions.
+            {isFil
+              ? `Nabuong plano ${new Date(result.generatedAt).toLocaleString("fil-PH")} · Ulat ng panahon mula sa Open-Meteo ERA5 · Modelong GDD mula sa FAO Paper No. 56 · Laging kumonsulta sa lokal na agronomista bago gumawa ng mahahalagang desisyon sa bukid.`
+              : `Plan generated ${new Date(result.generatedAt).toLocaleString()} · Weather from Open-Meteo ERA5 · GDD model from FAO Paper No. 56 · Always validate with a local agronomist before major farming decisions.`}
           </p>
             </>
           )}

@@ -101,6 +101,7 @@ router.post("/farming-plan/generate", async (req, res) => {
     lat: rawLat,
     lon: rawLon,
     locationName,
+    lang = "en",
     // Legacy PSGC fields — accepted but not required, used for display only
     cityName,
     provinceName,
@@ -111,6 +112,7 @@ router.post("/farming-plan/generate", async (req, res) => {
     lat?: number | null;
     lon?: number | null;
     locationName?: string;
+    lang?: string;
     cityName?: string;
     provinceName?: string;
     regionName?: string;
@@ -125,7 +127,7 @@ router.post("/farming-plan/generate", async (req, res) => {
   const lat = rawLat != null && !isNaN(Number(rawLat)) ? Number(rawLat) : PH_DEFAULT_LAT;
   const lon = rawLon != null && !isNaN(Number(rawLon)) ? Number(rawLon) : PH_DEFAULT_LON;
 
-  const locationKey = toLocationKey(lat, lon);
+  const locationKey = `${toLocationKey(lat, lon)}_${lang}`;
 
   // Best display name from whatever info is available
   const locationDisplay =
@@ -186,7 +188,8 @@ router.post("/farming-plan/generate", async (req, res) => {
       locationDisplay,
       climateProfile,
       forecastData,
-      wiki?.extract ?? null
+      wiki?.extract ?? null,
+      lang
     );
 
     if (country) {

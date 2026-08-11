@@ -74,7 +74,8 @@ router.get("/dashboard/summary", async (req, res) => {
   try {
     // Run weather fetch and AI cache lookup in parallel
     const today = new Date().toDateString();
-    const cacheKey = `dashboard_ai_${location}_${today}`;
+    const lang = ((req.query.lang as string) || "en").toLowerCase() === "fil" ? "fil" : "en";
+    const cacheKey = `dashboard_ai_${location}_${today}_${lang}`;
 
     const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const lon = req.query.lon ? parseFloat(req.query.lon as string) : undefined;
@@ -86,8 +87,13 @@ router.get("/dashboard/summary", async (req, res) => {
 
     const currentWeather = weather ?? getWeatherFallback(location);
 
-    let cropRec = "Analyze your local season — consult Crops tab for recommendations";
-    let marketAlert = "Check the Market tab for live commodity prices in your region";
+    const isFil = lang === "fil";
+    let cropRec = isFil
+      ? "Suriin ang lokal na panahon — sumangguni sa tab ng Mga Pananim para sa rekomendasyon"
+      : "Analyze your local season — consult Crops tab for recommendations";
+    let marketAlert = isFil
+      ? "Suriin ang Presyo sa Pamilihan para sa kasalukuyang presyo ng kalakal sa iyong rehiyon"
+      : "Check the Market tab for live commodity prices in your region";
     let aiTip = FARMING_TIPS[new Date().getDate() % FARMING_TIPS.length];
 
     if (cachedAI) {
@@ -96,12 +102,17 @@ router.get("/dashboard/summary", async (req, res) => {
       aiTip = cachedAI.farmingTip ?? aiTip;
     } else {
       try {
+        const langInstruction = isFil
+          ? "CRITICAL: Write all 3 field values in natural, clear Filipino (Tagalog). Do not use English."
+          : "Write all 3 field values in clear English.";
+
         const aiPrompt = `You are an expert agronomist. Given the location "${location}" and current date ${today}, respond with a JSON object with exactly these 3 fields:
 {
   "cropRecommendation": "one sentence naming 1-2 best crops to focus on now and why",
   "marketAlert": "one sentence about a current market opportunity or risk for this region",
   "farmingTip": "one practical, specific farming tip for this region and season"
 }
+${langInstruction}
 No markdown, just the JSON.`;
 
         const text = await aiComplete(aiPrompt, 300) ?? "{}";

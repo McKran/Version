@@ -291,7 +291,8 @@ async function handleListingAiAnalysis(req: any, res: any) {
       return;
     }
 
-    cacheKey = `mkt_gemini_${listingId}_${listing.askingPricePhpKg}`;
+    const lang = (((req.query.lang || req.body?.lang) as string) || "en").toLowerCase() === "fil" ? "fil" : "en";
+    cacheKey = `mkt_gemini_${listingId}_${listing.askingPricePhpKg}_${lang}`;
     const cached = await getCached<any>(cacheKey);
     if (cached) {
       res.json(cached);
@@ -301,7 +302,13 @@ async function handleListingAiAnalysis(req: any, res: any) {
     const daStats = calculatePriceStatistics(listing.cropName, listing.region);
     const minOffer = calculateMinAllowedOffer(listing.daReferencePricePhpKg);
 
+    const langInstruction = lang === "fil"
+      ? "CRITICAL LANGUAGE RULE: Write priceAssessment, offerAdvice, farmerTip, and keyHighlights in natural, clear Filipino (Tagalog)."
+      : "Write all string fields in clear English.";
+
     const prompt = `You are an expert Philippine agricultural economist and market advisor.
+
+${langInstruction}
 
 EVALUATE THIS FARMER MARKETPLACE LISTING:
 Crop: ${listing.cropName} (${listing.variety})

@@ -39,9 +39,9 @@ function decodeHtmlEntities(str: string): string {
  */
 async function searchYouTubeVideos(userQuery: string): Promise<VideoResult[]> {
   const searchQuery = `${userQuery.trim()} agriculture farming tutorial`;
-  const apiKey = process.env.YOUTUBE_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.YOUTUBE_API_KEY;
 
-  // Attempt 1: Official YouTube Data API v3 if API key available
+  // Attempt 1: Official YouTube Data API v3 if dedicated YOUTUBE_API_KEY is available
   if (apiKey) {
     try {
       const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(
@@ -73,7 +73,7 @@ async function searchYouTubeVideos(userQuery: string): Promise<VideoResult[]> {
         }
       } else {
         const errText = await res.text();
-        console.warn("[youtube] Data API v3 error, switching to public fallback:", res.status, errText);
+        console.warn("[youtube] YouTube API v3 returned status:", res.status, errText.slice(0, 100));
       }
     } catch (err) {
       console.warn("[youtube] YouTube API v3 fetch failed:", err);
@@ -255,10 +255,12 @@ router.post("/tutorials/search", async (req, res) => {
  */
 router.post("/tutorials/analyze", async (req, res) => {
   try {
-    const { query, videos } = req.body as {
+    const { query, videos, lang: rawLang } = req.body as {
       query: string;
       videos: VideoResult[];
+      lang?: string;
     };
+    const lang = (rawLang || "en").toLowerCase() === "fil" ? "fil" : "en";
 
     if (!query || typeof query !== "string" || !query.trim()) {
       res.status(400).json({ error: "Search query is required" });
@@ -267,9 +269,9 @@ router.post("/tutorials/analyze", async (req, res) => {
 
     if (!Array.isArray(videos) || videos.length === 0) {
       res.json({
-        querySummary: "No videos provided for analysis.",
+        querySummary: lang === "fil" ? "Walang natagpuang video para sa pagsusuri." : "No videos provided for analysis.",
         hasStrongMatch: false,
-        noMatchReason: "No search results available to evaluate.",
+        noMatchReason: lang === "fil" ? "Walang resulta sa paghahanap na masusuri." : "No search results available to evaluate.",
         videos: [],
       });
       return;
@@ -277,7 +279,7 @@ router.post("/tutorials/analyze", async (req, res) => {
 
     const cleanQuery = query.trim();
     const videoIdsHash = videos.map((v) => v.id).sort().join("_");
-    const cacheKey = `yt_eval_${cleanQuery.toLowerCase()}_${videoIdsHash}`;
+    const cacheKey = `yt_eval_${cleanQuery.toLowerCase()}_${videoIdsHash}_${lang}`;
 
     // Check cache
     const cachedAnalysis = await getCached<{
@@ -322,7 +324,13 @@ router.post("/tutorials/analyze", async (req, res) => {
       description: v.description,
     }));
 
+    const langInstruction = lang === "fil"
+      ? "CRITICAL LANGUAGE RULE: Write 'querySummary', 'noMatchReason', 'relevanceLabel', and 'explanation' in natural, clear Filipino (Tagalog)."
+      : "Write all textual response fields in clear English.";
+
     const systemInstruction = `You are Grownox, an expert agricultural AI assistant evaluating YouTube tutorial videos for farmers.
+
+${langInstruction}
 
 CRITICAL INSTRUCTIONS & ACCURACY RULES:
 1. Compare the farmer's request against each video's TITLE and DESCRIPTION.

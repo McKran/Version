@@ -55,7 +55,7 @@ interface ListingItem {
 
 export default function Dashboard() {
   const { location, setLocation } = useLocationStore();
-  const { settings } = useSettings();
+  const { settings, t } = useSettings();
 
   // Location Selector Modal State
   const [locationModalOpen, setLocationModalOpen] = useState(false);
@@ -63,10 +63,10 @@ export default function Dashboard() {
 
   const lat = settings.cityLat ?? undefined;
   const lon = settings.cityLon ?? undefined;
-  const queryParams = { location, ...(lat !== undefined && lon !== undefined ? { lat, lon } : {}) };
+  const queryParams = { location, ...(lat !== undefined && lon !== undefined ? { lat, lon } : {}), lang: settings.language };
 
   const { data: summary, isLoading } = useGetDashboardSummary(
-    queryParams,
+    queryParams as any,
     { query: { queryKey: getGetDashboardSummaryQueryKey(queryParams) } }
   );
 
@@ -144,12 +144,12 @@ export default function Dashboard() {
       {/* QUICK CATEGORY NAVIGATION STRIP */}
       <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { href: "/weather", icon: CloudSun, label: "Weather", badge: "Live", color: "bg-blue-50/80 text-blue-700 hover:bg-blue-600 hover:text-white border-blue-200/60" },
-          { href: "/market", icon: TrendingUp, label: "Market Prices", badge: "DA Data", color: "bg-emerald-50/80 text-emerald-800 hover:bg-emerald-700 hover:text-white border-emerald-200/60" },
-          { href: "/marketplace", icon: Store, label: "Marketplace", badge: "Trading", color: "bg-amber-50/90 text-amber-900 hover:bg-gradient-to-r hover:from-amber-600 hover:to-rose-600 hover:text-white border-amber-200/80" },
-          { href: "/farming-plan", icon: ClipboardList, label: "Farm Planner", badge: "Tasks", color: "bg-emerald-100/70 text-emerald-900 hover:bg-emerald-800 hover:text-white border-emerald-200/80" },
-          { href: "/chat", icon: Bot, label: "AI Advisor", badge: "Gemini", color: "bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50 text-indigo-800 hover:bg-gradient-to-r hover:from-blue-600 hover:to-cyan-600 hover:text-white border-blue-200/60" },
-          { href: "/tutorials", icon: Video, label: "Agri Tutorials", badge: "Guides", color: "bg-rose-50/80 text-rose-800 hover:bg-rose-600 hover:text-white border-rose-200/60" },
+          { href: "/weather", icon: CloudSun, label: t.weather, badge: t.live, color: "bg-blue-50/80 text-blue-700 hover:bg-blue-600 hover:text-white border-blue-200/60" },
+          { href: "/market", icon: TrendingUp, label: t.market, badge: "DA Data", color: "bg-emerald-50/80 text-emerald-800 hover:bg-emerald-700 hover:text-white border-emerald-200/60" },
+          { href: "/marketplace", icon: Store, label: t.marketplace, badge: t.trading, color: "bg-amber-50/90 text-amber-900 hover:bg-gradient-to-r hover:from-amber-600 hover:to-rose-600 hover:text-white border-amber-200/80" },
+          { href: "/farming-plan", icon: ClipboardList, label: t.farmingPlan, badge: t.tasks, color: "bg-emerald-100/70 text-emerald-900 hover:bg-emerald-800 hover:text-white border-emerald-200/80" },
+          { href: "/chat", icon: Bot, label: t.aiAdvisor, badge: "Gemini", color: "bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50 text-indigo-800 hover:bg-gradient-to-r hover:from-blue-600 hover:to-cyan-600 hover:text-white border-blue-200/60" },
+          { href: "/tutorials", icon: Video, label: t.tutorials, badge: t.guides, color: "bg-rose-50/80 text-rose-800 hover:bg-rose-600 hover:text-white border-rose-200/60" },
         ].map((item) => (
           <Link
             key={item.href}
@@ -182,11 +182,11 @@ export default function Dashboard() {
                   <CloudSun className="h-5 w-5" />
                 </div>
                 <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  🌤 Weather
+                  🌤 {t.weather}
                 </h2>
               </div>
               <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200/80 text-[10px]">
-                Live Forecast
+                {t.liveForecast}
               </Badge>
             </div>
 
@@ -209,11 +209,11 @@ export default function Dashboard() {
                 <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-stone-100 dark:border-stone-800/80">
                   <div className="flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
                     <Droplets className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                    <span>Humidity <strong>{weatherData.humidity}%</strong></span>
+                    <span>{t.humidity} <strong>{weatherData.humidity}%</strong></span>
                   </div>
                   <div className="flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
                     <Wind className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
-                    <span>Wind <strong>{weatherData.windSpeed} km/h</strong></span>
+                    <span>{t.wind} <strong>{weatherData.windSpeed} km/h</strong></span>
                   </div>
                 </div>
               </div>
@@ -224,7 +224,7 @@ export default function Dashboard() {
             href="/weather"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 pt-2 group"
           >
-            <span>View weather forecast</span>
+            <span>{t.viewAll}</span>
             <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
@@ -238,11 +238,11 @@ export default function Dashboard() {
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  📊 Market Prices
+                  📊 {t.market}
                 </h2>
               </div>
               <Badge variant="outline" className="bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/80 text-[10px]">
-                DA Reference
+                {t.daReference}
               </Badge>
             </div>
 
@@ -282,7 +282,7 @@ export default function Dashboard() {
             href="/market"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 pt-2 group"
           >
-            <span>View all prices</span>
+            <span>{t.viewAll}</span>
             <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
@@ -296,22 +296,24 @@ export default function Dashboard() {
                   <Bot className="h-5 w-5" />
                 </div>
                 <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  🤖 Grownox Insight
+                  🤖 {t.grownoxInsight}
                 </h2>
               </div>
               <Badge className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white text-[10px] shadow-xs border-0">
-                AI Market Brief
+                {t.aiMarketBrief}
               </Badge>
             </div>
 
             <div className="p-3.5 rounded-xl bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-cyan-50/70 dark:from-blue-950/40 dark:to-cyan-950/40 border border-blue-200/70 dark:border-blue-800/50 text-xs space-y-2">
               <p className="text-stone-800 dark:text-stone-200 font-medium leading-relaxed">
                 {summary?.marketAlert ||
-                  "Rice and grain prices are trending upwards in local regional markets due to seasonal demand shifts. Higher demand for local well-milled varieties creates a favorable selling window for growers."}
+                  (settings.language === "fil"
+                    ? "Tumaas ang presyo ng bigas sa mga lokal na pamilihan dahil sa mataas na demand sa panahon ng anihan. Magandang pagkakataon ito upang magbenta ng ani."
+                    : "Rice and grain prices are trending upwards in local regional markets due to seasonal demand shifts. Higher demand for local well-milled varieties creates a favorable selling window for growers.")}
               </p>
               <div className="text-[11px] text-indigo-700 dark:text-cyan-300 font-bold flex items-center gap-1 pt-1 border-t border-blue-200/60 dark:border-indigo-800/50">
                 <Sparkles className="h-3 w-3 shrink-0 text-cyan-600 dark:text-cyan-400" />
-                <span>Tip: {summary?.farmingTip || "Monitor local DA market prices weekly to maximize profit."}</span>
+                <span>Tip: {summary?.farmingTip || (settings.language === "fil" ? "Suriin ang presyo ng DA linggo-linggo para mas lumaki ang kita." : "Monitor local DA market prices weekly to maximize profit.")}</span>
               </div>
             </div>
           </div>
@@ -320,7 +322,7 @@ export default function Dashboard() {
             href="/market"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-800 dark:text-cyan-400 dark:hover:text-cyan-300 pt-2 group"
           >
-            <span>View market analysis</span>
+            <span>{t.viewMarketAnalysis}</span>
             <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
@@ -334,11 +336,11 @@ export default function Dashboard() {
                   <Store className="h-5 w-5 text-amber-700 dark:text-amber-300" />
                 </div>
                 <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  🛒 Marketplace
+                  🛒 {t.marketplace}
                 </h2>
               </div>
               <Badge variant="outline" className="bg-amber-50/80 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200/90 text-[10px] font-semibold">
-                Direct Farm Trading
+                {t.directFarmTrading}
               </Badge>
             </div>
 
@@ -346,12 +348,12 @@ export default function Dashboard() {
               <div className="p-3.5 rounded-xl bg-gradient-to-br from-amber-50/70 via-rose-50/30 to-amber-50/50 dark:from-amber-950/40 dark:to-rose-950/20 border border-amber-200/80 dark:border-amber-800/50">
                 <div className="text-xs font-bold text-amber-950 dark:text-amber-200 flex items-center gap-1.5 mb-1">
                   <Sprout className="h-3.5 w-3.5 text-rose-600 dark:text-amber-400" />
-                  <span>{listingCount} active crop listings near you</span>
+                  <span>{listingCount} {t.activeListingsNearYou}</span>
                 </div>
                 <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
                   {activeListings.length > 0
                     ? `Latest crops: ${activeListings.map((l) => l.cropName).join(", ")}`
-                    : "Connect directly with local farmers in your province with zero middleman markups."}
+                    : (settings.language === "fil" ? "Makipag-ugnayan nang direkta sa mga magsasaka sa iyong lalawigan nang walang patong na tubo." : "Connect directly with local farmers in your province with zero middleman markups.")}
                 </p>
               </div>
             </div>
@@ -361,7 +363,7 @@ export default function Dashboard() {
             href="/marketplace"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-rose-700 dark:text-amber-400 dark:hover:text-amber-300 pt-2 group"
           >
-            <span>Browse marketplace</span>
+            <span>{t.browseMarketplace}</span>
             <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
@@ -375,34 +377,34 @@ export default function Dashboard() {
                   <ClipboardList className="h-5 w-5" />
                 </div>
                 <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  🌾 Farm Planner
+                  🌾 {t.farmingPlan}
                 </h2>
               </div>
               <Badge variant="outline" className="bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/80 text-[10px] font-semibold">
-                Today's Tasks
+                {t.todaysTasks}
               </Badge>
             </div>
 
             <div className="space-y-2">
               <div className="text-xs font-bold text-stone-900 dark:text-stone-100 mb-2">
-                Schedule & Action Items:
+                {t.scheduleActionItems}:
               </div>
-              {tasks.map((t) => (
+              {tasks.map((tItem) => (
                 <button
-                  key={t.id}
-                  onClick={() => toggleTask(t.id)}
+                  key={tItem.id}
+                  onClick={() => toggleTask(tItem.id)}
                   className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-xl border transition-all text-xs ${
-                    t.done
+                    tItem.done
                       ? "bg-stone-50/60 dark:bg-stone-900/40 border-stone-200/50 text-stone-400 line-through"
                       : "bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200/70 dark:border-emerald-800/50 text-stone-800 dark:text-stone-200 font-medium hover:border-emerald-400"
                   }`}
                 >
-                  {t.done ? (
+                  {tItem.done ? (
                     <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
                     <Circle className="h-4 w-4 text-emerald-500 dark:text-emerald-500 shrink-0 mt-0.5" />
                   )}
-                  <span className="leading-snug">{t.label}</span>
+                  <span className="leading-snug">{tItem.label}</span>
                 </button>
               ))}
             </div>
@@ -412,7 +414,7 @@ export default function Dashboard() {
             href="/farming-plan"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300 pt-2 group"
           >
-            <span>Open planner</span>
+            <span>{t.openPlanner}</span>
             <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>

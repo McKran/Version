@@ -54,7 +54,8 @@ function SettingsRow({
 
 export default function Settings() {
   const { location, setLocation } = useLocationStore();
-  const { settings, updateSettings, resetOnboarding } = useSettings();
+  const { settings, updateSettings, setLanguage, resetOnboarding, t } = useSettings();
+  const isFil = settings.language === "fil";
 
   const selectedCountry = COUNTRIES.find(c => c.code === settings.countryCode);
   const isDark = settings.theme === "dark" || (settings.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -64,31 +65,65 @@ export default function Settings() {
     updateSettings({ countryCode: code, currency: country?.currency ?? "USD" });
   };
 
-  const marketModeDescription =
-    settings.targetMarket === "international"
-      ? "Showing international commodity benchmarks as primary price"
-      : settings.targetMarket === "regional"
-      ? "Showing regional market prices as primary benchmark"
-      : "Showing local farmgate and market prices as primary";
+  const marketModeDescription = isFil
+    ? (settings.targetMarket === "international"
+        ? "Ipinapakita ang mga pandaigdigang presyo bilang pangunahin"
+        : settings.targetMarket === "regional"
+        ? "Ipinapakita ang mga panrehiyong presyo sa merkado"
+        : "Ipinapakita ang mga lokal na presyo sa bukid at pamilihan")
+    : (settings.targetMarket === "international"
+        ? "Showing international commodity benchmarks as primary price"
+        : settings.targetMarket === "regional"
+        ? "Showing regional market prices as primary benchmark"
+        : "Showing local farmgate and market prices as primary");
 
-  const unitDescription =
-    settings.weightUnit === "gram"
-      ? "Prices shown per gram across all market views"
-      : settings.weightUnit === "kilogram"
-      ? "Prices shown per kilogram across all market views"
-      : "Prices shown per metric ton across all market views";
+  const unitDescription = isFil
+    ? (settings.weightUnit === "gram"
+        ? "Presyo bawat gramo (g) sa lahat ng pamilihan"
+        : settings.weightUnit === "kilogram"
+        ? "Presyo bawat kilo (kg) sa lahat ng pamilihan"
+        : "Presyo bawat tonelada (MT) sa lahat ng pamilihan")
+    : (settings.weightUnit === "gram"
+        ? "Prices shown per gram across all market views"
+        : settings.weightUnit === "kilogram"
+        ? "Prices shown per kilogram across all market views"
+        : "Prices shown per metric ton across all market views");
 
   return (
     <div className="max-w-2xl mx-auto space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your farm preferences and app experience</p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {isFil ? "Mga Setting" : "Settings"}
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          {isFil ? "Pamahalaan ang iyong mga kagustuhan sa sakahan at karanasan sa app" : "Manage your farm preferences and app experience"}
+        </p>
       </div>
 
-      <SettingsGroup title="Appearance">
+      <SettingsGroup title={isFil ? "Wika (Language)" : "Language"}>
+        <SettingsRow
+          icon={Globe}
+          label={isFil ? "Wika ng App" : "App Language"}
+          description={isFil ? "Pumili sa pagitan ng Ingles at Filipino (Tagalog)" : "Choose between English and Filipino (Tagalog)"}
+          control={
+            <Select value={settings.language} onValueChange={(v: any) => setLanguage(v)}>
+              <SelectTrigger className="w-[170px] h-9 border-transparent bg-muted/60 font-medium text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">🇺🇸 English</SelectItem>
+                <SelectItem value="fil">🇵🇭 Filipino (Tagalog)</SelectItem>
+              </SelectContent>
+            </Select>
+          }
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title={isFil ? "Hitsura" : "Appearance"}>
         <SettingsRow
           icon={isDark ? Moon : Sun}
           label="Dark Mode"
+          description={isDark ? "Dark theme active" : "Default light theme active. Switch on to enable dark mode."}
           control={
             <Switch
               checked={isDark}
@@ -98,15 +133,16 @@ export default function Settings() {
         />
         <SettingsRow
           icon={Monitor}
-          label="Theme Preference"
+          label="Theme Mode"
+          description="Choose preferred theme mode"
           control={
             <Select value={settings.theme} onValueChange={(v: any) => updateSettings({ theme: v })}>
-              <SelectTrigger className="w-[110px] h-8 border-transparent bg-muted/50">
+              <SelectTrigger className="w-[120px] h-8 border-transparent bg-muted/50">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="light">Light Mode</SelectItem>
+                <SelectItem value="dark">Dark Mode</SelectItem>
                 <SelectItem value="system">System</SelectItem>
               </SelectContent>
             </Select>
@@ -114,42 +150,42 @@ export default function Settings() {
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Location & Region">
+      <SettingsGroup title={isFil ? "Lokasyon at Rehiyon" : "Location & Region"}>
         <SettingsRow
           icon={MapPin}
-          label="City / Town"
-          description="Your nearest city for live weather"
+          label={isFil ? "Lungsod / Bayan" : "City / Town"}
+          description={isFil ? "Pinakamalapit na lungsod para sa panahon" : "Your nearest city for live weather"}
           control={
             <Input
               value={settings.cityName ?? ""}
               onChange={(e) => updateSettings({ cityName: e.target.value })}
               className="h-8 w-36 text-right border-transparent bg-muted/50 focus-visible:bg-background text-sm"
-              placeholder="Enter city..."
+              placeholder={isFil ? "Ilagay ang lungsod..." : "Enter city..."}
             />
           }
         />
         <SettingsRow
           icon={MapPin}
-          label="Region / Province"
-          description="State, province, or region"
+          label={isFil ? "Rehiyon / Lalawigan" : "Region / Province"}
+          description={isFil ? "Lalawigan o rehiyon" : "State, province, or region"}
           control={
             <Input
               value={settings.regionName ?? ""}
               onChange={(e) => updateSettings({ regionName: e.target.value })}
               className="h-8 w-36 text-right border-transparent bg-muted/50 focus-visible:bg-background text-sm"
-              placeholder="Enter region..."
+              placeholder={isFil ? "Ilagay ang rehiyon..." : "Enter region..."}
             />
           }
         />
         <SettingsRow
           icon={Globe}
-          label="Country"
+          label={isFil ? "Bansa" : "Country"}
           description={selectedCountry ? `${selectedCountry.currencyName} · ${selectedCountry.climate} climate` : undefined}
           control={
             <Select value={settings.countryCode} onValueChange={handleCountryChange}>
               <SelectTrigger className="w-[140px] h-8 border-transparent bg-muted/50">
                 <SelectValue>
-                  {selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : "Select country"}
+                  {selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : (isFil ? "Pumili ng bansa" : "Select country")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="max-h-72">
@@ -164,8 +200,8 @@ export default function Settings() {
         />
         <SettingsRow
           icon={Globe}
-          label="Currency"
-          description="Auto-set from country selection"
+          label={isFil ? "Pera / Salapi" : "Currency"}
+          description={isFil ? "Kusa mula sa napiling bansa" : "Auto-set from country selection"}
           value={
             <Badge variant="secondary" className="bg-primary/10 text-primary font-mono text-xs">
               {selectedCountry?.currencySymbol} {settings.currency}
@@ -175,8 +211,8 @@ export default function Settings() {
         />
         <SettingsRow
           icon={MapPin}
-          label="Weather Location"
-          description="Override for weather queries"
+          label={isFil ? "Lokasyon ng Panahon" : "Weather Location"}
+          description={isFil ? "Para sa mga tanong sa panahon" : "Override for weather queries"}
           control={
             <Input
               value={location}
@@ -187,10 +223,10 @@ export default function Settings() {
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Market & Pricing">
+      <SettingsGroup title={isFil ? "Merkado at Presyo" : "Market & Pricing"}>
         <SettingsRow
           icon={Scale}
-          label="Default Weight Unit"
+          label={isFil ? "Kaugaliang Timbang" : "Default Weight Unit"}
           description={unitDescription}
           control={
             <Select
@@ -201,16 +237,16 @@ export default function Settings() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gram">Per gram (g)</SelectItem>
-                <SelectItem value="kilogram">Per kilogram (kg)</SelectItem>
-                <SelectItem value="metric_ton">Per metric ton (MT)</SelectItem>
+                <SelectItem value="gram">{isFil ? "Bawat gramo (g)" : "Per gram (g)"}</SelectItem>
+                <SelectItem value="kilogram">{isFil ? "Bawat kilo (kg)" : "Per kilogram (kg)"}</SelectItem>
+                <SelectItem value="metric_ton">{isFil ? "Bawat tonelada (MT)" : "Per metric ton (MT)"}</SelectItem>
               </SelectContent>
             </Select>
           }
         />
         <SettingsRow
           icon={ShoppingCart}
-          label="Target Market"
+          label={isFil ? "Inaasahang Merkado" : "Target Market"}
           description={marketModeDescription}
           control={
             <Select
@@ -221,19 +257,21 @@ export default function Settings() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="local">Local Market</SelectItem>
-                <SelectItem value="regional">Regional</SelectItem>
-                <SelectItem value="international">International</SelectItem>
+                <SelectItem value="local">{isFil ? "Lokal na Pamilihan" : "Local Market"}</SelectItem>
+                <SelectItem value="regional">{isFil ? "Panrehiyon" : "Regional"}</SelectItem>
+                <SelectItem value="international">{isFil ? "Pandaigdigan" : "International"}</SelectItem>
               </SelectContent>
             </Select>
           }
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Preferred Crops">
+      <SettingsGroup title={isFil ? "Mga Nais na Pananim" : "Preferred Crops"}>
         <div className="p-4">
           {settings.preferredCrops.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No preferred crops selected. Re-run setup to configure.</p>
+            <p className="text-sm text-muted-foreground">
+              {isFil ? "Walang napiling pananim. Isagawa muli ang setup upang pumili." : "No preferred crops selected. Re-run setup to configure."}
+            </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {settings.preferredCrops.map(crop => (
