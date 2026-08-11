@@ -1,0 +1,10 @@
+{
+  "name": "Remix Grownox - AI Agriculture Assistant",
+  "description": "Smart farming command center with weather forecasts, crop planning, DA market prices, marketplace, and AI agricultural assistance.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
