@@ -1,5 +1,5 @@
 {pkgs}: {
   deps = [
-    pkgs.ollama
+    pkgs.nodejs_20
   ];
 }
