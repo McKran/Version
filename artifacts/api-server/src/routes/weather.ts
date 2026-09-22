@@ -106,59 +106,15 @@ router.get("/weather/current", async (req, res) => {
 
 router.get("/weather/forecast", async (req, res) => {
   const parsed = GetWeatherForecastQueryParams.safeParse(req.query);
-  const location = (parsed.success && parsed.data.location) ? parsed.data.location : "Nairobi, Kenya";
+  const location = (parsed.success && parsed.data.location) ? parsed.data.location : "Butuan City, Agusan del Norte";
   const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
   const lon = req.query.lon ? parseFloat(req.query.lon as string) : undefined;
 
   try {
-    const geo = await resolveCoords(lat, lon, location);
-    if (!geo) {
-      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const fallback = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const seed = location.length + i;
-        const conditions = ["Partly Cloudy", "Mainly Clear", "Light Rain", "Overcast", "Clear Sky", "Moderate Rain", "Mainly Clear"];
-        const condition = conditions[seed % conditions.length];
-        return {
-          date: date.toISOString().split("T")[0],
-          dayName: i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayNames[date.getDay()],
-          high: 22 + (seed % 10),
-          low: 12 + (seed % 8),
-          condition,
-          humidity: 50 + (seed % 40),
-          rainfall: condition.includes("Rain") ? 3 + (seed % 8) : 0,
-          farmingNote: getFarmingNote(condition),
-        };
-      });
-      res.json(fallback);
-      return;
-    }
-
-    const raw = await fetchLiveWeather(geo.lat, geo.lon);
-    const daily = raw.daily;
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-    const forecast = (daily.time as string[]).map((dateStr: string, i: number) => {
-      const date = new Date(dateStr);
-      const code = (daily.weather_code as number[])[i] ?? 0;
-      const condition = WMO_CONDITIONS[code] ?? "Partly Cloudy";
-      const rainfall = (daily.precipitation_sum as number[])[i] ?? 0;
-      return {
-        date: dateStr,
-        dayName: i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayNames[date.getDay()],
-        high: Math.round((daily.temperature_2m_max as number[])[i] ?? 25),
-        low: Math.round((daily.temperature_2m_min as number[])[i] ?? 15),
-        condition,
-        humidity: 55,
-        rainfall: Math.round(rainfall * 10) / 10,
-        farmingNote: getFarmingNote(condition),
-      };
-    });
-
-    res.json(forecast);
+    const weather = await fetchCurrentWeather(location, lat, lon);
+    res.json(weather.daily || []);
   } catch (err) {
-    req.log.error({ err }, "Error fetching live forecast");
+    req.log.error({ err }, "Error fetching forecast");
     res.status(500).json({ error: "Failed to fetch forecast" });
   }
 });
@@ -221,6 +177,28 @@ Respond ONLY with a JSON object (no markdown):
         "Monitor crop health daily",
         "Prepare for upcoming weather changes",
       ],
+    });
+  }
+});
+
+import { getDisasterAlertsForLocation } from "../lib/pagasa-service";
+
+router.get("/weather/disaster-alerts", async (req, res) => {
+  const location = (req.query.location as string) || "Tacloban City, Leyte";
+  const lang = ((req.query.lang as string) || "en").toLowerCase() === "fil" ? "fil" : "en";
+
+  try {
+    const disasterAlerts = await getDisasterAlertsForLocation(location, lang);
+    res.json(disasterAlerts);
+  } catch (err) {
+    req.log.error({ err }, "Error fetching disaster alerts");
+    res.json({
+      location,
+      hasActiveAlert: false,
+      alerts: [],
+      message: lang === "fil" ? "Walang aktibong babala sa masamang panahon." : "No active severe weather alerts.",
+      updatedAt: new Date().toISOString(),
+      source: "DOST-PAGASA",
     });
   }
 });

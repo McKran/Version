@@ -80,13 +80,13 @@ const REGIONS = [
 ];
 
 const CATEGORIES = [
-  { id: "all", name: "All Commodities" },
-  { id: "Grains & Staples", name: "Grains & Staples" },
-  { id: "Vegetables", name: "Vegetables" },
-  { id: "Fruits", name: "Fruits" },
-  { id: "Root Crops", name: "Root Crops" },
-  { id: "Legumes & Others", name: "Legumes" },
-  { id: "Herbs & Spices", name: "Spices" },
+  { id: "all", name: "All Commodities", nameFil: "Lahat ng Produkto" },
+  { id: "Grains & Staples", name: "Grains & Staples", nameFil: "Bigas at Butil" },
+  { id: "Vegetables", name: "Vegetables", nameFil: "Mga Gulay" },
+  { id: "Fruits", name: "Fruits", nameFil: "Mga Prutas" },
+  { id: "Root Crops", name: "Root Crops", nameFil: "Mga Bungang-ugat" },
+  { id: "Legumes & Others", name: "Legumes", nameFil: "Mga Sitaw at Mungo" },
+  { id: "Herbs & Spices", name: "Spices", nameFil: "Mga Pampalasa" },
 ];
 
 function TrendBadge({ trend, percent }: { trend: string; percent: number }) {
@@ -215,13 +215,13 @@ function DetailDrawer({
             </SheetHeader>
 
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-5 min-h-0">
-              {/* 30-Day DA Retail Price Chart */}
+              {/* 30-Day Retail Price Chart */}
               {history.length > 0 && (
                 <Card className="border bg-card overflow-hidden min-w-0">
                   <CardHeader className="p-3 sm:p-4 pb-2">
                     <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <BarChart3 className="h-4 w-4 text-primary shrink-0" />
-                      {isFilipino ? "30-Araw na Presyo ng DA" : "30-Day DA Retail Price Trend"} (₱/{item.unit})
+                      {isFilipino ? "30-Araw na Talaan ng Presyo" : "30-Day Retail Price Trend"} (₱/{item.unit})
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-4 pt-0">
@@ -243,7 +243,7 @@ function DetailDrawer({
                             }}
                             itemStyle={{ color: "hsl(var(--primary))", fontWeight: "bold" }}
                             labelStyle={{ color: "hsl(var(--muted-foreground))", fontWeight: "bold", marginBottom: "2px" }}
-                            formatter={(value: any) => [`₱${value}/${item.unit}`, "DA Retail Price"]}
+                            formatter={(value: any) => [`₱${value}/${item.unit}`, isFilipino ? "Presyo ng Tingi" : "Retail Price"]}
                             labelFormatter={(label) => `Date: ${label}`}
                           />
                           <Line
@@ -370,11 +370,11 @@ function DetailDrawer({
               {/* DETAILED MODE ONLY: Full Stats, Separated Confirmed Facts, and Factor Lists */}
               {insight && mode === "detailed" && (
                 <>
-                  {/* DA Statistical Summary Grid */}
+                  {/* Statistical Summary Grid */}
                   <div className="space-y-1.5 min-w-0">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <BarChart3 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      {isFilipino ? "Opisyal na Estadistika ng DA" : "DA Statistical Benchmark Data"}
+                      {isFilipino ? "Estadistika ng Pamilihan" : "Market Statistical Benchmark Data"}
                     </span>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div className="rounded-xl bg-muted/50 p-2.5 sm:p-3 text-center border">
@@ -413,7 +413,7 @@ function DetailDrawer({
                   <div className="space-y-2 min-w-0">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      {isFilipino ? "Kumpirmadong Datos mula sa DA Bantay Presyo" : "Confirmed Facts Supported by DA Data"}
+                      {isFilipino ? "Datos ng Pamilihan" : "Grownox Market Analysis"}
                     </span>
                     <ul className="space-y-1.5">
                       {insight.factsAndDerived.map((fact, idx) => (
@@ -464,6 +464,7 @@ function DetailDrawer({
 
 export default function Market() {
   const { settings } = useSettings();
+  const isFilipino = settings.language === "fil";
   const [selectedRegion, setSelectedRegion] = useState("CARAGA");
   const [category, setCategory] = useState("all");
   const [prices, setPrices] = useState<DAPriceRecord[]>([]);
@@ -478,13 +479,24 @@ export default function Market() {
   const fetchPrices = () => {
     setLoading(true);
     fetch(`/api/prices/latest?region=${encodeURIComponent(selectedRegion)}&category=${encodeURIComponent(category)}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         if (Array.isArray(data)) {
           setPrices(data);
         }
       })
-      .catch((err) => console.error("Error fetching DA prices:", err))
+      .catch((err) => {
+        console.warn("Retrying DA prices fetch...", err);
+        fetch("/api/prices/latest")
+          .then((r) => r.ok ? r.json() : [])
+          .then((data) => {
+            if (Array.isArray(data)) setPrices(data);
+          })
+          .catch(() => {});
+      })
       .finally(() => setLoading(false));
   };
 
@@ -539,27 +551,31 @@ export default function Market() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Badge className="bg-emerald-700 hover:bg-emerald-800 text-white font-medium gap-1 text-[11px] sm:text-xs px-2.5 py-0.5">
-              <ShieldCheck className="h-3.5 w-3.5" /> Authoritative Source
+              <TrendingUp className="h-3.5 w-3.5" /> {isFilipino ? "Grownox Market Data" : "Grownox Market Data"}
             </Badge>
-            <span className="text-xs text-muted-foreground font-medium">Bantay Presyo Index</span>
+            <span className="text-xs text-muted-foreground font-medium">{isFilipino ? "Presyo ng Pamilihan" : "Market Price Reference"}</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Philippine DA Market Prices</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+            {isFilipino ? "Presyo ng Pamilihan" : "Philippine Commodity Market Prices"}
+          </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Official Philippine Department of Agriculture (DA) retail commodity monitoring with Grownox AI Market Insights
+            {isFilipino
+              ? "Pagsubaybay sa presyo ng tingi para sa mga pananim at bilihin kasama ang Grownox AI Insights"
+              : "Regional retail commodity price tracking with Grownox AI Insights"}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <a href="/marketplace" className="w-full sm:w-auto">
             <Button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 px-3.5 gap-1.5">
-              <Store className="h-3.5 w-3.5" /> Farmer Marketplace →
+              <Store className="h-3.5 w-3.5" /> {isFilipino ? "Pamilihan ng Magsasaka →" : "Farmer Marketplace →"}
             </Button>
           </a>
           {/* Region Selector */}
           <Select value={selectedRegion} onValueChange={setSelectedRegion}>
             <SelectTrigger className="w-full sm:w-64 bg-card text-xs h-9">
               <MapPin className="h-3.5 w-3.5 mr-1 text-primary shrink-0" />
-              <SelectValue placeholder="Select Region" />
+              <SelectValue placeholder={isFilipino ? "Pumili ng Rehiyon" : "Select Region"} />
             </SelectTrigger>
             <SelectContent>
               {REGIONS.map((r) => (
@@ -570,7 +586,7 @@ export default function Market() {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={fetchPrices} title="Refresh DA Prices">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={fetchPrices} title={isFilipino ? "I-refresh ang Presyo" : "Refresh Prices"}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -582,7 +598,7 @@ export default function Market() {
           <Card className="bg-card border shadow-xs">
             <CardContent className="p-3">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400 mb-0.5">
-                <TrendingUp className="h-3.5 w-3.5" /> Top Rising
+                <TrendingUp className="h-3.5 w-3.5" /> {isFilipino ? "Pinakamalaking Tumaas" : "Top Rising"}
               </div>
               <div className="text-xs sm:text-sm font-bold text-foreground truncate">{trends.topGainer}</div>
             </CardContent>
@@ -590,7 +606,7 @@ export default function Market() {
           <Card className="bg-card border shadow-xs">
             <CardContent className="p-3">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mb-0.5">
-                <TrendingDown className="h-3.5 w-3.5" /> Top Lowering
+                <TrendingDown className="h-3.5 w-3.5" /> {isFilipino ? "Pinakamalaking Bumababa" : "Top Lowering"}
               </div>
               <div className="text-xs sm:text-sm font-bold text-foreground truncate">{trends.topLoser}</div>
             </CardContent>
@@ -598,7 +614,7 @@ export default function Market() {
           <Card className="bg-card border shadow-xs">
             <CardContent className="p-3">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 mb-0.5">
-                <BarChart3 className="h-3.5 w-3.5" /> Most Stable
+                <BarChart3 className="h-3.5 w-3.5" /> {isFilipino ? "Pinaka-matatag" : "Most Stable"}
               </div>
               <div className="text-xs sm:text-sm font-bold text-foreground truncate">{trends.mostStable}</div>
             </CardContent>
@@ -606,9 +622,11 @@ export default function Market() {
           <Card className="bg-card border shadow-xs">
             <CardContent className="p-3">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground mb-0.5">
-                <AlertCircle className="h-3.5 w-3.5 text-primary" /> Market Sentiment
+                <AlertCircle className="h-3.5 w-3.5 text-primary" /> {isFilipino ? "Kondisyon ng Merkado" : "Market Sentiment"}
               </div>
-              <div className="text-xs sm:text-sm font-bold text-foreground capitalize truncate">{trends.marketSentiment}</div>
+              <div className="text-xs sm:text-sm font-bold text-foreground capitalize truncate">
+                {trends.marketSentiment === "Increasing" ? (isFilipino ? "Tumaas" : "Increasing") : trends.marketSentiment === "Decreasing" ? (isFilipino ? "Bumababa" : "Decreasing") : (isFilipino ? "Matatag" : "Stable")}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -621,7 +639,7 @@ export default function Market() {
             <div className="flex items-center gap-1.5 flex-wrap">
               <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
               <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 dark:text-emerald-200">
-                {settings.language === "fil" ? "Awtomatikong Pagsusuri ng Grownox" : "Automated Grownox Market Insight"} ({selectedRegion})
+                {isFilipino ? "Awtomatikong Pagsusuri ng Grownox" : "Automated Grownox Market Insight"} ({selectedRegion})
               </span>
               <Badge variant="outline" className="text-[10px] text-emerald-800 dark:text-emerald-300 border-emerald-500/30 shrink-0">
                 Grownox AI
@@ -631,7 +649,7 @@ export default function Market() {
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               {loadingBgInsight ? (
                 <Badge variant="outline" className="text-[10px] animate-pulse border-emerald-400 text-emerald-700 dark:text-emerald-300 bg-emerald-500/10">
-                  {settings.language === "fil" ? "Nagsusuri..." : "Grownox is analyzing..."}
+                  {isFilipino ? "Nagsusuri..." : "Grownox is analyzing..."}
                 </Badge>
               ) : bgInsight ? (
                 <Badge className="bg-emerald-600 text-white text-[10px]">
@@ -650,7 +668,7 @@ export default function Market() {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {settings.language === "fil" ? "Pinaikli" : "Simplified"}
+                  {isFilipino ? "Pinaikli" : "Simplified"}
                 </button>
                 <button
                   type="button"
@@ -661,7 +679,7 @@ export default function Market() {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {settings.language === "fil" ? "Detalyado" : "Detailed"}
+                  {isFilipino ? "Detalyado" : "Detailed"}
                 </button>
               </div>
             </div>
@@ -679,14 +697,14 @@ export default function Market() {
               <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 space-y-1 min-w-0 break-words whitespace-normal">
                 <span className="font-bold text-emerald-900 dark:text-emerald-200 text-[11px] flex items-center gap-1.5 uppercase tracking-wider">
                   <TrendingUp className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  {settings.language === "fil" ? "Inaasahang Pananaw:" : "Expected Outlook:"}
+                  {isFilipino ? "Inaasahang Pananaw:" : "Expected Outlook:"}
                 </span>
                 <p className="text-xs text-foreground leading-snug break-words whitespace-normal">{bgInsight.expectedTrend}</p>
               </div>
               {bgMode === "detailed" && bgInsight.possibleFactors && bgInsight.possibleFactors.length > 0 && (
                 <div className="pt-1.5 space-y-1.5 min-w-0 w-full">
                   <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
-                    {settings.language === "fil" ? "Mga Salik sa Pamilihan:" : "Market Factors:"}
+                    {isFilipino ? "Mga Salik sa Pamilihan:" : "Market Factors:"}
                   </span>
                   <div className="flex flex-col gap-1.5 w-full">
                     {bgInsight.possibleFactors.map((f, i) => (
@@ -700,7 +718,7 @@ export default function Market() {
               )}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">Market prices loaded. Grownox AI analysis initializing...</p>
+            <p className="text-xs text-muted-foreground">{isFilipino ? "Nai-load na ang mga presyo. Sinisimulan ang pagsusuri ng Grownox AI..." : "Market prices loaded. Grownox AI analysis initializing..."}</p>
           )}
         </CardContent>
       </Card>
@@ -715,7 +733,7 @@ export default function Market() {
             className="rounded-full text-xs h-8 whitespace-nowrap px-3.5 shrink-0"
             onClick={() => setCategory(cat.id)}
           >
-            {cat.name}
+            {isFilipino ? cat.nameFil : cat.name}
           </Button>
         ))}
       </div>
@@ -725,13 +743,15 @@ export default function Market() {
         <CardHeader className="p-4 pb-3 flex flex-row items-center justify-between space-y-0 border-b">
           <div>
             <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
-              Retail Price Index (₱/kg)
+              {isFilipino ? "Talaan ng Presyo ng Tingi (₱/kg)" : "Retail Price Index (₱/kg)"}
               <Badge variant="outline" className="text-[10px] font-normal">
-                {prices.length} Items
+                {prices.length} {isFilipino ? "Produkto" : "Items"}
               </Badge>
             </CardTitle>
             <CardDescription className="text-xs">
-              Primary Source: Philippine Department of Agriculture (DA) - Bantay Presyo
+              {isFilipino
+                ? "Pinagmulan ng Datos: Grownox Market Reference & Regional Monitoring"
+                : "Data Source: Grownox Market Reference & Regional Monitoring"}
             </CardDescription>
           </div>
         </CardHeader>
@@ -745,7 +765,7 @@ export default function Market() {
             </div>
           ) : prices.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-xs">
-              No commodity prices found for this category.
+              {isFilipino ? "Walang nahanap na presyo ng produkto para sa kategoryang ito." : "No commodity prices found for this category."}
             </div>
           ) : (
             <>
@@ -777,7 +797,7 @@ export default function Market() {
                         onClick={() => setSelectedItem(item)}
                       >
                         <Sparkles className="h-3 w-3" />
-                        AI Insights
+                        {isFilipino ? "Pagsusuri" : "AI Insights"}
                       </Button>
                     </div>
                   </div>
@@ -789,12 +809,12 @@ export default function Market() {
                 <table className="w-full text-sm text-left">
                   <thead className="bg-muted/50 text-muted-foreground border-b text-xs uppercase font-semibold">
                     <tr>
-                      <th className="px-4 py-3">Commodity</th>
-                      <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3">DA Retail Price</th>
-                      <th className="px-4 py-3">DA Range (₱/kg)</th>
-                      <th className="px-4 py-3">24h Trend</th>
-                      <th className="px-4 py-3 text-right">AI Insights</th>
+                      <th className="px-4 py-3">{isFilipino ? "Pananim / Produkto" : "Commodity"}</th>
+                      <th className="px-4 py-3">{isFilipino ? "Kategorya" : "Category"}</th>
+                      <th className="px-4 py-3">{isFilipino ? "Presyo ng Tingi" : "Retail Price"}</th>
+                      <th className="px-4 py-3">{isFilipino ? "Saklaw ng Presyo (₱/kg)" : "Price Range (₱/kg)"}</th>
+                      <th className="px-4 py-3">{isFilipino ? "Direksyon (24h)" : "24h Trend"}</th>
+                      <th className="px-4 py-3 text-right">{isFilipino ? "Pagsusuri ng AI" : "AI Insights"}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -823,7 +843,7 @@ export default function Market() {
                             onClick={() => setSelectedItem(item)}
                           >
                             <Sparkles className="h-3.5 w-3.5" />
-                            View Insights
+                            {isFilipino ? "Tingnan ang Pagsusuri" : "View Insights"}
                           </Button>
                         </td>
                       </tr>

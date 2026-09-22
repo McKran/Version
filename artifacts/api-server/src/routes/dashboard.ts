@@ -67,12 +67,14 @@ const FARMING_TIPS = [
   "GPS-based precision agriculture can reduce input costs by 15-20% on large farms.",
 ];
 
+import { getDisasterAlertsForLocation } from "../lib/pagasa-service";
+
 router.get("/dashboard/summary", async (req, res) => {
   const parsed = GetDashboardSummaryQueryParams.safeParse(req.query);
   const location = (parsed.success && parsed.data.location) ? parsed.data.location : "Nairobi, Kenya";
 
   try {
-    // Run weather fetch and AI cache lookup in parallel
+    // Run weather fetch, disaster alerts, and AI cache lookup in parallel
     const today = new Date().toDateString();
     const lang = ((req.query.lang as string) || "en").toLowerCase() === "fil" ? "fil" : "en";
     const cacheKey = `dashboard_ai_${location}_${today}_${lang}`;
@@ -80,8 +82,9 @@ router.get("/dashboard/summary", async (req, res) => {
     const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const lon = req.query.lon ? parseFloat(req.query.lon as string) : undefined;
 
-    const [weather, cachedAI] = await Promise.all([
+    const [weather, disasterAlertsData, cachedAI] = await Promise.all([
       fetchCurrentWeather(location, lat, lon),
+      getDisasterAlertsForLocation(location, lang),
       getCached<{ cropRecommendation: string; marketAlert: string; farmingTip: string }>(cacheKey),
     ]);
 
@@ -125,10 +128,11 @@ No markdown, just the JSON.`;
       } catch {}
     }
 
-    const alertCount = (currentWeather.rainfall > 5 ? 1 : 0) + (currentWeather.windSpeed > 30 ? 1 : 0) + ((currentWeather as any).condition?.includes("Thunderstorm") ? 1 : 0);
+    const alertCount = (disasterAlertsData.hasActiveAlert ? disasterAlertsData.alerts.length : 0) + (currentWeather.rainfall > 5 ? 1 : 0) + (currentWeather.windSpeed > 30 ? 1 : 0);
 
     res.json({
       weather: currentWeather,
+      disasterAlerts: disasterAlertsData,
       topCropRecommendation: cropRec,
       marketAlert,
       farmingTip: aiTip,

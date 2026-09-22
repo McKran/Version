@@ -185,10 +185,10 @@ export default function Crops() {
 
   const getRiskColor = (riskLevel: string) => {
     switch (riskLevel.toLowerCase()) {
-      case "low": return "bg-primary/20 text-primary";
-      case "medium": return "bg-amber-500/20 text-amber-700 dark:text-amber-400";
-      case "high": return "bg-destructive/20 text-destructive";
-      default: return "bg-muted text-muted-foreground";
+      case "low": return "bg-[#E8F5E9] text-[#2E7D32] border border-[#DDE5DE]";
+      case "medium": return "bg-[#F9A825]/15 text-[#F9A825] border border-[#F9A825]/30";
+      case "high": return "bg-[#D32F2F]/15 text-[#D32F2F] border border-[#D32F2F]/30";
+      default: return "bg-muted text-muted-foreground border-transparent";
     }
   };
 
@@ -211,70 +211,75 @@ export default function Crops() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case "high": return "text-destructive";
-      case "medium": return "text-amber-500";
-      case "low": return "text-primary";
-      default: return "text-muted-foreground";
+      case "high": return "text-[#D32F2F]";
+      case "medium": return "text-[#F9A825]";
+      case "low": return "text-[#43A047]";
+      default: return "text-[#6B756D]";
     }
   };
 
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {isFil ? "Plano sa Pagtatanim" : "Crop Planning"}
+        <h1 className="text-2xl font-bold tracking-tight text-[#26332A] dark:text-stone-100">
+          {isFil ? "Mga Pananim" : "Crops & Planting"}
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {isFil ? `Mga rekomendasyon para sa ${location} · ${currentSeasonLabel}` : `Recommendations for ${location} · ${currentSeasonLabel}`}
+        <p className="text-[#6B756D] mt-1 text-sm">
+          {isFil ? `Mga rekomendasyon sa pananim para sa ${location} · ${currentSeasonLabel}` : `Crop recommendations for ${location} · ${currentSeasonLabel}`}
         </p>
       </div>
 
       {isMobile ? (
         /* ── Mobile: single column, calendar at bottom ── */
         <div className="space-y-5">
-          <h2 className="text-base font-semibold flex items-center gap-2">
-            <Sprout className="h-4 w-4" /> {isFil ? "Mga Inirerekomendang Pananim" : "Recommended Crops"}
+          <h2 className="text-base font-semibold flex items-center gap-2 text-[#26332A] dark:text-stone-100">
+            <Sprout className="h-4 w-4 text-[#7CB342]" /> {isFil ? "Mga Inirerekomendang Pananim" : "Recommended Crops"}
           </h2>
 
           <Accordion type="single" collapsible className="space-y-3" defaultValue="rec-0">
             {recommendations?.map((crop, i) => (
-              <AccordionItem key={i} value={`rec-${i}`} className="border rounded-2xl bg-card overflow-hidden shadow-sm">
-                <AccordionTrigger className="px-4 py-4 hover:no-underline hover:bg-muted/40 data-[state=open]:bg-muted/40 transition-colors [&>svg]:hidden">
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xl shrink-0">
+              <AccordionItem key={i} value={`rec-${i}`} className="border border-[#DDE5DE] rounded-2xl bg-white dark:bg-stone-900 overflow-hidden shadow-xs">
+                <AccordionTrigger className="px-3.5 py-3.5 hover:no-underline hover:bg-[#F8FAF7] dark:hover:bg-stone-800/40 data-[state=open]:bg-[#F8FAF7] dark:data-[state=open]:bg-stone-800/40 transition-colors [&>svg]:hidden">
+                  <div className="flex items-start gap-3 w-full text-left min-w-0">
+                    <div className="h-10 w-10 rounded-full bg-[#E8F5E9] border border-[#DDE5DE] flex items-center justify-center text-xl shrink-0 mt-0.5">
                       {crop.icon}
                     </div>
-                    <div className="text-left flex-1 min-w-0">
-                      <div className="font-semibold">{getCropName(crop.cropName, isFil)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {isFil ? "Kakaangkop: " : "Suitability: "}{formatSuitability(crop.suitability)}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="font-bold text-base text-[#26332A] dark:text-stone-100 leading-tight">
+                          {getCropName(crop.cropName, isFil)}
+                        </span>
+                        <Badge variant="secondary" className={`${getRiskColor(crop.riskLevel)} text-[11px] shrink-0 font-medium px-2 py-0.5 rounded-full`}>
+                          {formatRiskText(crop.riskLevel)}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-[#6B756D] flex items-center gap-1.5 flex-wrap">
+                        <span className="font-normal">{isFil ? "Pagka-angkop:" : "Suitability:"}</span>
+                        <span className="font-semibold text-[#26332A] dark:text-stone-200">{formatSuitability(crop.suitability)}</span>
                       </div>
                     </div>
-                    <Badge variant="secondary" className={`${getRiskColor(crop.riskLevel)} text-xs shrink-0`}>
-                      {formatRiskText(crop.riskLevel)}
-                    </Badge>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180 shrink-0 ml-1" />
+                    <ChevronDown className="h-5 w-5 text-[#6B756D] transition-transform duration-200 group-data-[state=open]:rotate-180 shrink-0 mt-1 ml-1" />
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4 pt-0">
                   <div className="grid grid-cols-2 gap-3 mt-2">
-                    <div className="p-3 bg-background rounded-xl border">
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <TrendingUp className="h-3 w-3" /> {t.expectedYield}
+                    <div className="p-3 bg-[#F8FAF7] dark:bg-stone-950 rounded-xl border border-[#DDE5DE]">
+                      <div className="text-xs text-[#6B756D] flex items-center gap-1 mb-1">
+                        <TrendingUp className="h-3 w-3 text-[#2E7D32]" /> {t.expectedYield}
                       </div>
-                      <div className="text-sm font-semibold">{getEstimatedYield(crop.estimatedYield, isFil)}</div>
+                      <div className="text-sm font-semibold text-[#26332A] dark:text-stone-100">{getEstimatedYield(crop.estimatedYield, isFil)}</div>
                     </div>
-                    <div className="p-3 bg-background rounded-xl border">
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <CalendarIcon className="h-3 w-3" /> {isFil ? "Panahon ng Pagtatanim" : "Plant window"}
+                    <div className="p-3 bg-[#F8FAF7] dark:bg-stone-950 rounded-xl border border-[#DDE5DE]">
+                      <div className="text-xs text-[#6B756D] flex items-center gap-1 mb-1">
+                        <CalendarIcon className="h-3 w-3 text-[#6B756D]" /> {isFil ? "Panahon ng Pagtatanim" : "Plant window"}
                       </div>
-                      <div className="text-sm font-semibold">{getPlantingWindow(crop.plantingWindow, isFil)}</div>
+                      <div className="text-sm font-semibold text-[#26332A] dark:text-stone-100">{getPlantingWindow(crop.plantingWindow, isFil)}</div>
                     </div>
-                    <div className="col-span-2 p-3 bg-background rounded-xl border">
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <Info className="h-3 w-3" /> {isFil ? "Mga Tala sa Pagsasaka" : "Agronomist Notes"}
+                    <div className="col-span-2 p-3 bg-[#F8FAF7] dark:bg-stone-950 rounded-xl border border-[#DDE5DE]">
+                      <div className="text-xs text-[#6B756D] flex items-center gap-1 mb-1">
+                        <Info className="h-3 w-3 text-[#6B756D]" /> {isFil ? "Mga Tala sa Pagsasaka" : "Agronomist Notes"}
                       </div>
-                      <p className="text-sm leading-relaxed">{getCropNotes(crop.notes, crop.cropName, isFil)}</p>
+                      <p className="text-sm leading-relaxed text-[#26332A] dark:text-stone-200">{getCropNotes(crop.notes, crop.cropName, isFil)}</p>
                     </div>
                   </div>
                 </AccordionContent>
@@ -284,13 +289,13 @@ export default function Crops() {
 
           {/* Calendar below on mobile */}
           <div className="space-y-3">
-            <h2 className="text-base font-semibold flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4" /> {isFil ? "Mga Mendating Gawain" : "Upcoming Activities"}
+            <h2 className="text-base font-semibold flex items-center gap-2 text-[#26332A] dark:text-stone-100">
+              <CalendarIcon className="h-4 w-4 text-[#6B756D]" /> {isFil ? "Mga Susunod na Gawain sa Bukid" : "Upcoming Activities"}
             </h2>
-            <Card className="rounded-2xl">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm">{isFil ? "Susunod na 30 Araw" : "Next 30 Days"}</CardTitle>
-                <CardDescription className="text-xs">{isFil ? "Nakatakdang mga gawain sa bukid" : "Scheduled farming tasks"}</CardDescription>
+            <Card className="rounded-2xl border border-[#DDE5DE] bg-white dark:bg-stone-900 shadow-xs">
+              <CardHeader className="pb-2 pt-4 px-4 border-b border-[#DDE5DE]">
+                <CardTitle className="text-sm text-[#26332A] dark:text-stone-100">{isFil ? "Susunod na 30 Araw" : "Next 30 Days"}</CardTitle>
+                <CardDescription className="text-xs text-[#6B756D]">{isFil ? "Nakatakdang mga gawain sa bukid" : "Scheduled farming tasks"}</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <CalendarList calendar={calendar} getPriorityColor={getPriorityColor} isFil={isFil} />
@@ -302,49 +307,53 @@ export default function Crops() {
         /* ── Desktop: two-column layout ── */
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Sprout className="h-5 w-5" /> {isFil ? "Mga Inirerekomendang Pananim" : "Recommended Crops"}
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-[#26332A] dark:text-stone-100">
+              <Sprout className="h-5 w-5 text-[#7CB342]" /> {isFil ? "Mga Inirerekomendang Pananim" : "Recommended Crops"}
             </h2>
             <Accordion type="single" collapsible className="space-y-4" defaultValue="rec-0">
               {recommendations?.map((crop, i) => (
-                <AccordionItem key={i} value={`rec-${i}`} className="border rounded-xl bg-card overflow-hidden">
-                  <AccordionTrigger className="px-6 hover:no-underline hover:bg-muted/50 data-[state=open]:bg-muted/50 transition-colors">
-                    <div className="flex items-center justify-between w-full pr-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
+                <AccordionItem key={i} value={`rec-${i}`} className="border border-[#DDE5DE] rounded-xl bg-white dark:bg-stone-900 overflow-hidden shadow-xs">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F8FAF7] dark:hover:bg-stone-800/40 data-[state=open]:bg-[#F8FAF7] dark:data-[state=open]:bg-stone-800/40 transition-colors [&>svg]:hidden">
+                    <div className="flex items-center justify-between w-full gap-4 min-w-0">
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className="h-10 w-10 rounded-full bg-[#E8F5E9] border border-[#DDE5DE] flex items-center justify-center text-xl shrink-0">
                           {crop.icon}
                         </div>
-                        <div className="text-left">
-                          <div className="font-semibold text-lg">{getCropName(crop.cropName, isFil)}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {isFil ? "Kakaangkop: " : "Suitability: "}{formatSuitability(crop.suitability)}
+                        <div className="text-left min-w-0 space-y-0.5">
+                          <div className="font-semibold text-lg text-[#26332A] dark:text-stone-100">{getCropName(crop.cropName, isFil)}</div>
+                          <div className="text-sm text-[#6B756D] flex items-center gap-1.5">
+                            <span className="font-normal">{isFil ? "Pagka-angkop:" : "Suitability:"}</span>
+                            <span className="font-semibold text-[#26332A] dark:text-stone-200">{formatSuitability(crop.suitability)}</span>
                           </div>
                         </div>
                       </div>
-                      <Badge variant="secondary" className={getRiskColor(crop.riskLevel)}>
-                        {formatRiskText(crop.riskLevel)}
-                      </Badge>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <Badge variant="secondary" className={`${getRiskColor(crop.riskLevel)} px-2.5 py-1 font-medium`}>
+                          {formatRiskText(crop.riskLevel)}
+                        </Badge>
+                        <ChevronDown className="h-5 w-5 text-[#6B756D] transition-transform duration-200 group-data-[state=open]:rotate-180 shrink-0" />
+                      </div>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6 pt-2">
                     <div className="grid sm:grid-cols-2 gap-4 mt-4">
-                      <div className="space-y-1 p-3 bg-background rounded-lg border">
-                        <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <TrendingUp className="h-3.5 w-3.5" /> {t.expectedYield}
+                      <div className="space-y-1 p-3 bg-[#F8FAF7] dark:bg-stone-950 rounded-lg border border-[#DDE5DE]">
+                        <div className="text-xs text-[#6B756D] flex items-center gap-1.5">
+                          <TrendingUp className="h-3.5 w-3.5 text-[#2E7D32]" /> {t.expectedYield}
                         </div>
-                        <div className="font-medium">{getEstimatedYield(crop.estimatedYield, isFil)}</div>
+                        <div className="font-medium text-[#26332A] dark:text-stone-100">{getEstimatedYield(crop.estimatedYield, isFil)}</div>
                       </div>
-                      <div className="space-y-1 p-3 bg-background rounded-lg border">
-                        <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <CalendarIcon className="h-3.5 w-3.5" /> {isFil ? "Panahon ng Pagtatanim" : "Planting Window"}
+                      <div className="space-y-1 p-3 bg-[#F8FAF7] dark:bg-stone-950 rounded-lg border border-[#DDE5DE]">
+                        <div className="text-xs text-[#6B756D] flex items-center gap-1.5">
+                          <CalendarIcon className="h-3.5 w-3.5 text-[#6B756D]" /> {isFil ? "Panahon ng Pagtatanim" : "Planting Window"}
                         </div>
-                        <div className="font-medium">{getPlantingWindow(crop.plantingWindow, isFil)}</div>
+                        <div className="font-medium text-[#26332A] dark:text-stone-100">{getPlantingWindow(crop.plantingWindow, isFil)}</div>
                       </div>
-                      <div className="sm:col-span-2 space-y-2 p-3 bg-background rounded-lg border">
-                        <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                          <Info className="h-3.5 w-3.5" /> {isFil ? "Mga Tala sa Pagsasaka" : "Agronomist Notes"}
+                      <div className="sm:col-span-2 space-y-2 p-3 bg-[#F8FAF7] dark:bg-stone-950 rounded-lg border border-[#DDE5DE]">
+                        <div className="text-xs text-[#6B756D] flex items-center gap-1.5">
+                          <Info className="h-3.5 w-3.5 text-[#6B756D]" /> {isFil ? "Mga Tala sa Pagsasaka" : "Agronomist Notes"}
                         </div>
-                        <p className="text-sm leading-relaxed">{getCropNotes(crop.notes, crop.cropName, isFil)}</p>
+                        <p className="text-sm leading-relaxed text-[#26332A] dark:text-stone-200">{getCropNotes(crop.notes, crop.cropName, isFil)}</p>
                       </div>
                     </div>
                   </AccordionContent>
@@ -354,13 +363,13 @@ export default function Crops() {
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" /> {isFil ? "Mga Mendating Gawain" : "Upcoming Activities"}
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-[#26332A] dark:text-stone-100">
+              <CalendarIcon className="h-5 w-5 text-[#6B756D]" /> {isFil ? "Mga Susunod na Gawain sa Bukid" : "Upcoming Activities"}
             </h2>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{isFil ? "Susunod na 30 Araw" : "Next 30 Days"}</CardTitle>
-                <CardDescription>{isFil ? "Nakatakdang mga gawain sa bukid" : "Scheduled farming tasks"}</CardDescription>
+            <Card className="border border-[#DDE5DE] bg-white dark:bg-stone-900 shadow-xs">
+              <CardHeader className="pb-3 border-b border-[#DDE5DE]">
+                <CardTitle className="text-base text-[#26332A] dark:text-stone-100">{isFil ? "Susunod na 30 Araw" : "Next 30 Days"}</CardTitle>
+                <CardDescription className="text-[#6B756D]">{isFil ? "Nakatakdang mga gawain sa bukid" : "Scheduled farming tasks"}</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <CalendarList calendar={calendar} getPriorityColor={getPriorityColor} isFil={isFil} />
@@ -384,25 +393,25 @@ function CalendarList({
 }) {
   if (!calendar || calendar.length === 0) {
     return (
-      <div className="p-8 text-center text-muted-foreground text-sm">
+      <div className="p-8 text-center text-[#6B756D] text-sm">
         {isFil ? "Walang nakatakdang gawain." : "No upcoming activities scheduled."}
       </div>
     );
   }
   return (
-    <div className="divide-y">
+    <div className="divide-y divide-[#DDE5DE]">
       {calendar.map((event, i) => (
-        <div key={i} className="p-4 flex gap-4 hover:bg-muted/40 transition-colors">
+        <div key={i} className="p-4 flex gap-4 hover:bg-[#F8FAF7] dark:hover:bg-stone-800/40 transition-colors">
           <div className="w-12 text-center shrink-0">
-            <div className="text-2xl font-bold text-primary">{event.daysFromNow}</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{isFil ? "Araw" : "Days"}</div>
+            <div className="text-2xl font-bold text-[#2E7D32]">{event.daysFromNow}</div>
+            <div className="text-[10px] uppercase tracking-wider text-[#6B756D]">{isFil ? "Araw" : "Days"}</div>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm truncate">{getCalendarCrop(event.crop, isFil)}</span>
+              <span className="font-semibold text-sm truncate text-[#26332A] dark:text-stone-100">{getCalendarCrop(event.crop, isFil)}</span>
               <AlertTriangle className={`h-3.5 w-3.5 shrink-0 ${getPriorityColor(event.priority)}`} />
             </div>
-            <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{getCalendarActivity(event.activity, isFil)}</div>
+            <div className="text-xs text-[#6B756D] mt-0.5 leading-snug">{getCalendarActivity(event.activity, isFil)}</div>
           </div>
         </div>
       ))}

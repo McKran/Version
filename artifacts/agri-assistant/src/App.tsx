@@ -8,17 +8,46 @@ import { SettingsProvider, useSettings } from "@/hooks/use-settings";
 import { Layout } from "@/components/layout";
 import { Loader2 } from "lucide-react";
 
-const Dashboard = lazy(() => import("@/pages/dashboard"));
-const Weather = lazy(() => import("@/pages/weather"));
-const Crops = lazy(() => import("@/pages/crops"));
-const Market = lazy(() => import("@/pages/market"));
-const Marketplace = lazy(() => import("@/pages/marketplace"));
-const FarmingPlan = lazy(() => import("@/pages/farming-plan"));
-const Tutorials = lazy(() => import("@/pages/tutorials"));
-const Chat = lazy(() => import("@/pages/chat"));
-const Settings = lazy(() => import("@/pages/settings"));
-const Onboarding = lazy(() => import("@/pages/onboarding"));
-const NotFound = lazy(() => import("@/pages/not-found"));
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (error: any) {
+      const isChunkError =
+        error?.message?.includes("Failed to fetch dynamically imported module") ||
+        error?.message?.includes("Loading chunk") ||
+        error?.message?.includes("error loading dynamically imported module");
+
+      if (isChunkError) {
+        const storageKey = "last_chunk_reload";
+        const lastReload = sessionStorage.getItem(storageKey);
+        const now = Date.now();
+        if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+          sessionStorage.setItem(storageKey, String(now));
+          window.location.reload();
+          return new Promise<{ default: T }>(() => {});
+        }
+      }
+      throw error;
+    }
+  });
+}
+
+const Dashboard = lazyWithRetry(() => import("@/pages/dashboard"));
+const MarketDashboard = lazyWithRetry(() => import("@/pages/market-dashboard"));
+const FarmerDashboard = lazyWithRetry(() => import("@/pages/farmer-dashboard"));
+const Weather = lazyWithRetry(() => import("@/pages/weather"));
+const Crops = lazyWithRetry(() => import("@/pages/crops"));
+const Market = lazyWithRetry(() => import("@/pages/market"));
+const Marketplace = lazyWithRetry(() => import("@/pages/marketplace"));
+const FarmingPlan = lazyWithRetry(() => import("@/pages/farming-plan"));
+const Tutorials = lazyWithRetry(() => import("@/pages/tutorials"));
+const Chat = lazyWithRetry(() => import("@/pages/chat"));
+const Settings = lazyWithRetry(() => import("@/pages/settings"));
+const Onboarding = lazyWithRetry(() => import("@/pages/onboarding"));
+const NotFound = lazyWithRetry(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,11 +68,21 @@ function PageLoader() {
   );
 }
 
+function Home() {
+  const { activeSection } = useSettings();
+  if (activeSection === "market") {
+    return <MarketDashboard />;
+  }
+  return <FarmerDashboard />;
+}
+
 function Router() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={Home} />
+        <Route path="/market-dashboard" component={MarketDashboard} />
+        <Route path="/farmer-dashboard" component={FarmerDashboard} />
         <Route path="/weather" component={Weather} />
         <Route path="/crops" component={Crops} />
         <Route path="/market" component={Market} />

@@ -1,13 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSettings } from "@/hooks/use-settings";
 import { useLocation } from "wouter";
+import { GrownoxAiAvatar } from "@/components/grownox-ai-avatar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   MessageSquare, Plus, Trash2, Loader2,
-  Bot, User, Sprout, AlertCircle, Zap,
-  ChevronDown, Copy, Check, Menu, X, ArrowUp,
-  RotateCcw, Sparkles, Leaf
+  AlertCircle, Copy, Check, Menu, X, ArrowUp,
+  History, Share2, Sparkles, Send,
+  Calendar, Video, SlidersHorizontal, ArrowUpRight,
+  HelpCircle, ChevronRight
 } from "lucide-react";
 
 const BASE_URL = (import.meta.env.BASE_URL ?? "").replace(/\/+$/, "");
@@ -29,57 +33,89 @@ interface Conversation {
 
 const STARTERS_EN = [
   {
-    title: "Rice Farming",
-    desc: "Best high-yield rice varieties for my region",
-    prompt: "🌾 What rice varieties grow best in my region and season?",
+    icon: "🌾",
+    category: "Rice & Palay Prep",
+    title: "How do I prepare soil for wet-season palay planting?",
+    desc: "Land preparation, puddle depth, and certified seed selection",
+    prompt: "How do I prepare soil for wet-season palay planting and what high-yield certified varieties suit my region?",
+    bgColor: "bg-[#E8F5E9]",
+    textColor: "text-[#166534]",
   },
   {
-    title: "Pest & Blight Control",
-    desc: "Identify and treat bacterial leaf blight & armyworm",
-    prompt: "🐛 How do I identify, prevent, and treat bacterial leaf blight in rice?",
+    icon: "🐛",
+    category: "Pest & Disease",
+    title: "How can I manage onion armyworms & leaf blast?",
+    desc: "Early biological prevention, threshold counts, and chemical intervention",
+    prompt: "How can I identify, manage, and prevent armyworms and fungal leaf blast in my fields?",
+    bgColor: "bg-[#FEF9C3]",
+    textColor: "text-[#854D0E]",
   },
   {
-    title: "Fertilizer Schedule",
-    desc: "Basal & top-dress nutrient timing recommendations",
-    prompt: "🧪 Create a complete fertilizer application schedule for my current crops.",
+    icon: "🧪",
+    category: "Nutrient Timing",
+    title: "What fertilizer computation should I use per hectare?",
+    desc: "Basal Complete (14-14-14) and calibrated Urea split topdressing",
+    prompt: "What is the recommended fertilizer dosage computation and timing schedule per hectare for my crops?",
+    bgColor: "bg-[#E8F5E9]",
+    textColor: "text-[#166534]",
   },
   {
-    title: "Weather & Irrigation",
-    desc: "Watering schedule based on weather forecast",
-    prompt: "💧 How should I adjust my irrigation based on the current weather forecast?",
+    icon: "💧",
+    category: "Water Optimization",
+    title: "How do I optimize field water with PhilRice AWD tubes?",
+    desc: "Alternate Wetting and Drying protocol to avoid nitrogen leaching",
+    prompt: "How do I implement the PhilRice Alternate Wetting and Drying (AWD) tube protocol to conserve water?",
+    bgColor: "bg-[#E0F2FE]",
+    textColor: "text-[#0369A1]",
   },
 ];
 
 const STARTERS_FIL = [
   {
-    title: "Pagtatanim ng Palay",
-    desc: "Pinakamagandang uri ng palay na mataas ang ani",
-    prompt: "🌾 Anong uri ng palay ang pinakamagandang itanim sa aking rehiyon at panahon?",
+    icon: "🌾",
+    category: "Palay at Paghahanda",
+    title: "Paano ihanda ang lupa para sa tag-ulang pagtatanim?",
+    desc: "Pag-aararo, pagpapatubig, at tamang barayti ng binhi",
+    prompt: "Paano ang wastong paghahanda ng lupa sa palayan para sa tag-ulan at anong binhi ang angkop sa aming lugar?",
+    bgColor: "bg-[#E8F5E9]",
+    textColor: "text-[#166534]",
   },
   {
-    title: "Pagsugpo sa Peste at Sakit",
-    desc: "Pagtukoy at paggamot sa bacterial leaf blight at armyworm",
-    prompt: "🐛 Paano matutukoy, maiiwasan, at magagamot ang bacterial leaf blight sa palay?",
+    icon: "🐛",
+    category: "Peste at Sakit",
+    title: "Paano sugpuin ang harabas (armyworm) at leaf blast?",
+    desc: "Sintomas, bio-control, at wastong gamot sa pag-spray",
+    prompt: "Paano matutukoy at masusugpo ang armyworm (harabas) at leaf blast sa aking mga pananim?",
+    bgColor: "bg-[#FEF9C3]",
+    textColor: "text-[#854D0E]",
   },
   {
-    title: "Iskedyul ng Pag-aabono",
-    desc: "Rekomendasyon sa tamang oras ng paglalagay ng pataba",
-    prompt: "🧪 Gumawa ng kumpletong iskedyul ng paglalagay ng abono para sa aking pananim.",
+    icon: "🧪",
+    category: "Pag-aabono",
+    title: "Ano ang tamang dosis ng pataba kada ektarya?",
+    desc: "Iskedyul ng basal Complete (14-14-14) at Urea topdress",
+    prompt: "Ano ang tamang kalkulasyon at iskedyul ng abono (Complete at Urea) bawat ektarya para sa aking pananim?",
+    bgColor: "bg-[#E8F5E9]",
+    textColor: "text-[#166534]",
   },
   {
-    title: "Panahon at Pagpapatubig",
-    desc: "Iskedyul ng pagpapatubig batay sa ulat ng panahon",
-    prompt: "💧 Paano ko dapat iakma ang aking pagpapatubig batay sa ulat ng panahon?",
+    icon: "💧",
+    category: "AWD Pagpapatubig",
+    title: "Paano gamitin ang PhilRice AWD tubes sa patubig?",
+    desc: "Alternate Wetting and Drying para makatipid at maiwasan ang leaching",
+    prompt: "Paano ang tamang paggamit ng PhilRice AWD tubes sa pagpapatubig ng palay?",
+    bgColor: "bg-[#E0F2FE]",
+    textColor: "text-[#0369A1]",
   },
 ];
 
 function cleanErrorMessage(raw: string): string {
-  if (!raw) return "Grownox AI is currently unavailable. Please try again.";
+  if (!raw) return "Grownox is currently unavailable. Please try again.";
   if (raw.includes("429") || raw.includes("RESOURCE_EXHAUSTED") || raw.includes("Quota exceeded") || raw.includes("quota")) {
-    return "Grownox AI rate limit reached. Please wait a few seconds and try again.";
+    return "Grownox rate limit reached. Please wait a few seconds and try again.";
   }
   if (raw.includes("503") || raw.includes("UNAVAILABLE") || raw.includes("Overloaded")) {
-    return "Grownox AI is currently high in demand. Please try again in a moment.";
+    return "Grownox is currently in high demand. Please try again in a moment.";
   }
   if (raw.startsWith("{") || raw.startsWith("[")) {
     try {
@@ -91,152 +127,139 @@ function cleanErrorMessage(raw: string): string {
   return raw.length > 180 ? raw.slice(0, 180) + "..." : raw;
 }
 
-function MarkdownText({ text }: { text: string }) {
-  const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null);
+function MarkdownViewer({ text }: { text: string }) {
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  const handleCopyCode = (code: string, idx: number) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCodeIndex(idx);
-    setTimeout(() => setCopiedCodeIndex(null), 2000);
+  const handleCopySnippet = (codeText: string, idx: number) => {
+    navigator.clipboard.writeText(codeText);
+    setCopiedIndex(idx);
+    setTimeout(() => setCopiedIndex(null), 2000);
   };
-
-  const renderInline = (raw: string, i: number) => {
-    if (raw.startsWith("**") && raw.endsWith("**")) {
-      return <strong key={i} className="font-semibold text-foreground">{raw.slice(2, -2)}</strong>;
-    }
-    if (raw.startsWith("`") && raw.endsWith("`")) {
-      return (
-        <code key={i} className="bg-muted dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded text-xs font-mono">
-          {raw.slice(1, -1)}
-        </code>
-      );
-    }
-    return <span key={i}>{raw}</span>;
-  };
-
-  // Handle code blocks (```code```)
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  const blocks: { type: "code" | "text"; content: string; lang?: string }[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = codeBlockRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      blocks.push({ type: "text", content: text.slice(lastIndex, match.index) });
-    }
-    blocks.push({ type: "code", lang: match[1] ?? "code", content: match[2].trim() });
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) {
-    blocks.push({ type: "text", content: text.slice(lastIndex) });
-  }
-
-  let codeBlockCounter = 0;
 
   return (
-    <div className="space-y-3 text-sm leading-relaxed text-foreground/90">
-      {blocks.map((block, blockIdx) => {
-        if (block.type === "code") {
-          const currentCounter = codeBlockCounter++;
-          return (
-            <div key={blockIdx} className="my-3 rounded-xl border border-border bg-zinc-950 dark:bg-zinc-900 text-zinc-100 overflow-hidden shadow-sm font-mono text-xs">
-              <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 dark:bg-zinc-950 border-b border-zinc-800 text-zinc-400 text-[11px]">
-                <span>{block.lang || "code"}</span>
-                <button
-                  onClick={() => handleCopyCode(block.content, currentCounter)}
-                  className="flex items-center gap-1 hover:text-zinc-200 transition-colors"
-                >
-                  {copiedCodeIndex === currentCounter ? (
-                    <>
-                      <Check className="h-3 w-3 text-emerald-400" />
-                      <span className="text-emerald-400">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3 w-3" />
-                      <span>Copy code</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <pre className="p-4 overflow-x-auto leading-normal whitespace-pre">
-                <code>{block.content}</code>
-              </pre>
+    <div className="text-sm sm:text-[15px] leading-relaxed text-[#26332A] dark:text-stone-100 font-sans space-y-3">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => (
+            <h2 className="text-base sm:text-lg font-bold text-[#26332A] dark:text-white mt-4 mb-2 tracking-tight">
+              {children}
+            </h2>
+          ),
+          h2: ({ children }) => (
+            <h3 className="text-sm sm:text-base font-bold text-[#166534] dark:text-emerald-400 mt-3.5 mb-1.5 tracking-tight flex items-center gap-1.5">
+              {children}
+            </h3>
+          ),
+          h3: ({ children }) => (
+            <h4 className="text-xs sm:text-sm font-bold text-[#26332A] dark:text-stone-200 mt-3 mb-1">
+              {children}
+            </h4>
+          ),
+          p: ({ children }) => (
+            <p className="leading-relaxed my-2 text-[#26332A] dark:text-stone-200 break-words">
+              {children}
+            </p>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-bold text-[#26332A] dark:text-white">
+              {children}
+            </strong>
+          ),
+          ul: ({ children }) => (
+            <ul className="space-y-1.5 my-2.5 pl-1">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="space-y-2 my-2.5 pl-1 counter-reset-item">
+              {children}
+            </ol>
+          ),
+          li: ({ children, ...props }: any) => {
+            const isOrdered = props.ordered;
+            return (
+              <li className="flex items-start gap-2.5 my-1 leading-relaxed">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#2E7D32] mt-2 shrink-0"></span>
+                <span className="flex-1 min-w-0">{children}</span>
+              </li>
+            );
+          },
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-[#2E7D32] bg-[#E8F5E9]/60 dark:bg-emerald-950/20 p-3 my-2.5 rounded-r-xl text-xs sm:text-sm text-[#26332A] dark:text-stone-200">
+              {children}
+            </blockquote>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-3 rounded-xl border border-[#DDE5DE] dark:border-stone-800 shadow-2xs">
+              <table className="w-full divide-y divide-[#DDE5DE] dark:divide-stone-800 text-xs sm:text-sm">
+                {children}
+              </table>
             </div>
-          );
-        }
-
-        // Render formatted text lines
-        const lines = block.content.split("\n");
-        const elements: React.ReactNode[] = [];
-        let listItems: string[] = [];
-
-        const flushList = () => {
-          if (listItems.length) {
-            elements.push(
-              <ul key={`ul-${elements.length}`} className="space-y-1.5 my-2 pl-1">
-                {listItems.map((item, i) => (
-                  <li key={i} className="flex gap-2.5 items-start">
-                    <span className="text-emerald-500 font-bold mt-1 shrink-0 text-xs">•</span>
-                    <span className="flex-1">
-                      {item.replace(/^[-•*]\s*/, "").split(/(\*\*[^*]+\*\*|`[^`]+`)/).map(renderInline)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            );
-            listItems = [];
-          }
-        };
-
-        lines.forEach((line, i) => {
-          if (!line.trim()) {
-            flushList();
-            if (elements.length > 0) elements.push(<div key={`sp-${i}`} className="h-1.5" />);
-          } else if (line.match(/^#{1,3}\s/)) {
-            flushList();
-            const level = (line.match(/^(#{1,3})/) || [])[1]?.length ?? 1;
-            const txt = line.replace(/^#{1,3}\s/, "");
-            elements.push(
-              <h3 key={i} className={`font-semibold text-foreground tracking-tight ${
-                level === 1 ? "text-base mt-4 mb-2 font-bold" : level === 2 ? "text-sm mt-3 mb-1 font-semibold" : "text-sm mt-2 font-semibold"
-              }`}>
-                {txt.split(/(\*\*[^*]+\*\*|`[^`]+`)/).map(renderInline)}
-              </h3>
-            );
-          } else if (line.match(/^\d+\.\s/)) {
-            flushList();
-            elements.push(
-              <div key={i} className="flex gap-2.5 items-start my-1">
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium shrink-0 text-xs min-w-[1.2rem] mt-0.5">
-                  {line.match(/^\d+/)?.[0]}.
-                </span>
-                <span className="flex-1">
-                  {line.replace(/^\d+\.\s/, "").split(/(\*\*[^*]+\*\*|`[^`]+`)/).map(renderInline)}
-                </span>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-[#F0F4F1] dark:bg-stone-800 text-[#475549] dark:text-stone-300 font-semibold uppercase text-[11px] tracking-wider">
+              {children}
+            </thead>
+          ),
+          tbody: ({ children }) => (
+            <tbody className="divide-y divide-[#DDE5DE] dark:divide-stone-800 bg-white dark:bg-stone-900">
+              {children}
+            </tbody>
+          ),
+          th: ({ children }) => (
+            <th className="px-3.5 py-2.5 text-left font-bold">{children}</th>
+          ),
+          td: ({ children }) => (
+            <td className="px-3.5 py-2 text-[#26332A] dark:text-stone-200">{children}</td>
+          ),
+          code: ({ inline, className, children, ...props }: any) => {
+            const codeString = String(children).replace(/\n$/, "");
+            if (inline) {
+              return (
+                <code className="bg-[#F0F4F1] dark:bg-stone-800 text-[#166534] dark:text-emerald-400 px-1.5 py-0.5 rounded text-xs font-mono font-medium">
+                  {children}
+                </code>
+              );
+            }
+            return (
+              <div className="my-3 rounded-xl border border-[#DDE5DE] dark:border-stone-800 bg-[#F8FAF7] dark:bg-stone-950 text-[#26332A] dark:text-stone-100 overflow-hidden font-mono text-xs shadow-2xs">
+                <div className="flex items-center justify-between px-3.5 py-1.5 bg-[#F0F4F1] dark:bg-stone-900 border-b border-[#DDE5DE] dark:border-stone-800 text-[#6B756D] text-[11px]">
+                  <span>Field Prescription / Data</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopySnippet(codeString, 1)}
+                    className="flex items-center gap-1 hover:text-[#26332A] dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    {copiedIndex === 1 ? (
+                      <>
+                        <Check className="h-3 w-3 text-[#2E7D32]" />
+                        <span className="text-[#2E7D32] font-semibold">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <pre className="p-3.5 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
+                  <code>{children}</code>
+                </pre>
               </div>
             );
-          } else if (line.match(/^[-•*]\s/)) {
-            listItems.push(line);
-          } else {
-            flushList();
-            elements.push(
-              <p key={i} className="my-0.5">
-                {line.split(/(\*\*[^*]+\*\*|`[^`]+`)/).map(renderInline)}
-              </p>
-            );
-          }
-        });
-        flushList();
-
-        return <div key={blockIdx}>{elements}</div>;
-      })}
+          },
+        }}
+      >
+        {text}
+      </ReactMarkdown>
     </div>
   );
 }
 
 export default function Chat() {
-  const { settings } = useSettings();
+  const { settings, t } = useSettings();
   const [, navigate] = useLocation();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -254,7 +277,7 @@ export default function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom on update
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingContent]);
@@ -266,6 +289,17 @@ export default function Chat() {
       .then(d => setAiReady(d.ready))
       .catch(() => {});
   }, []);
+
+  // Auto-resize textarea smoothly with content
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const scrollHeight = textareaRef.current.scrollHeight;
+      const targetHeight = Math.min(Math.max(scrollHeight, 38), 140);
+      textareaRef.current.style.height = `${targetHeight}px`;
+      textareaRef.current.style.overflowY = scrollHeight > 140 ? "auto" : "hidden";
+    }
+  }, [input]);
 
   // Load conversations
   const loadConversations = useCallback(async () => {
@@ -356,7 +390,7 @@ export default function Chat() {
 
     // Reset textarea height
     if (textareaRef.current) {
-      textareaRef.current.style.height = "48px";
+      textareaRef.current.style.height = "38px";
     }
 
     const context = {
@@ -461,80 +495,103 @@ export default function Chat() {
     }
   };
 
-  const hasPsgc = !!(settings.regionCode || settings.provinceCode || settings.cityName);
-  const activeConv = conversations.find(c => c.id === activeId);
   const isFil = settings.language === "fil";
   const starters = isFil ? STARTERS_FIL : STARTERS_EN;
 
-  return (
-    <div className="flex h-full w-full bg-background text-foreground overflow-hidden font-sans">
+  const locationLabel = settings.cityName
+    ? `${settings.cityName}${settings.provinceName ? `, ${settings.provinceName}` : ""}`
+    : settings.provinceName || "Cabugao, Ilocos Sur";
 
-      {/* Mobile overlay */}
+  const cropsLabel = settings.preferredCrops && settings.preferredCrops.length > 0
+    ? settings.preferredCrops.join(" & ")
+    : "Rice & High-Value Crops";
+
+  const userInitials = (settings.userName || "Eduardo Ramos")
+    .split(" ")
+    .map(p => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="flex h-full w-full bg-[#F8FAF7] dark:bg-background text-[#26332A] dark:text-foreground overflow-hidden font-sans relative">
+
+      {/* Mobile Drawer Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs md:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar - ChatGPT Style */}
+      {/* History Drawer - Clean Grownox Style */}
       <aside className={`
-        fixed md:relative inset-y-0 left-0 z-50 md:z-auto
-        flex flex-col w-72 md:w-64 bg-zinc-900 text-zinc-200 border-r border-zinc-800
-        transition-transform duration-200 ease-in-out md:translate-x-0
+        fixed inset-y-0 left-0 z-50
+        flex flex-col w-72 sm:w-80 bg-white dark:bg-stone-900 border-r border-[#DDE5DE] dark:border-stone-800
+        transition-transform duration-200 ease-in-out shadow-xl
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
-        {/* Top Header */}
-        <div className="flex items-center justify-between p-3 border-b border-zinc-800/80">
-          <Button
-            onClick={startNewChat}
-            variant="ghost"
-            className="flex-1 justify-start gap-2.5 h-10 text-sm font-medium text-zinc-200 hover:text-white hover:bg-zinc-800 rounded-lg px-3"
-          >
-            <Plus className="h-4 w-4 text-zinc-400" />
-            <span>{isFil ? "Bagong Chat" : "New chat"}</span>
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
+        {/* Drawer Header */}
+        <div className="flex items-center justify-between p-4 border-b border-[#DDE5DE] dark:border-stone-800 bg-[#F8FAF7] dark:bg-stone-950">
+          <div className="flex items-center gap-2">
+            <GrownoxAiAvatar size="xs" />
+            <span className="font-bold text-sm text-[#26332A] dark:text-white">
+              {isFil ? "Kasaysayan ng Konsulta" : "Consultation History"}
+            </span>
+          </div>
+          <button
             onClick={() => setSidebarOpen(false)}
-            className="h-8 w-8 text-zinc-400 hover:text-white md:hidden ml-1"
+            className="p-1 rounded-lg hover:bg-muted text-[#6B756D] hover:text-[#26332A] dark:hover:text-white"
           >
             <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* New Chat Button */}
+        <div className="p-3 border-b border-[#DDE5DE] dark:border-stone-800">
+          <Button
+            onClick={startNewChat}
+            className="w-full bg-[#2E7D32] hover:bg-[#1b5e20] text-white font-semibold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 h-9"
+          >
+            <Plus className="h-4 w-4" />
+            <span>{isFil ? "Bagong Paksa / Chat" : "New Topic / Chat"}</span>
           </Button>
         </div>
 
-        {/* Conversations List */}
-        <ScrollArea className="flex-1 px-2 py-3">
-          <div className="px-2 pb-2 text-[11px] font-semibold tracking-wider uppercase text-zinc-500">
-            {isFil ? "Mga Nakaraang Chat" : "Recent Chats"}
+        {/* Conversation List */}
+        <ScrollArea className="flex-1 px-3 py-3">
+          <div className="px-2 pb-2 text-[10px] font-bold tracking-wider uppercase text-[#6B756D]">
+            {isFil ? "Mga Nakaraang Pag-uusap" : "Recent Sessions"}
           </div>
           {conversations.length === 0 ? (
-            <p className="text-xs text-zinc-500 text-center py-8 px-4">
-              {isFil ? "Wala pang mga pag-uusap." : "No conversations yet."}
-            </p>
+            <div className="text-center py-10 px-4 text-xs text-[#6B756D] space-y-2">
+              <MessageSquare className="h-8 w-8 mx-auto text-[#DDE5DE] dark:text-stone-700" />
+              <p>{isFil ? "Wala pang mga nakaraang pag-uusap." : "No previous consult sessions yet."}</p>
+            </div>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {conversations.map(conv => {
                 const isActive = activeId === conv.id;
                 return (
                   <div
                     key={conv.id}
                     onClick={() => selectConversation(conv.id)}
-                    className={`group relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
+                    className={`group flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs cursor-pointer transition-colors ${
                       isActive
-                        ? "bg-zinc-800 text-white font-medium"
-                        : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"
+                        ? "bg-[#E8F5E9] text-[#166534] font-bold border border-[#C8E6C9] shadow-2xs"
+                        : "text-[#26332A] dark:text-stone-300 hover:bg-[#F0F4F1] dark:hover:bg-stone-800"
                     }`}
                   >
-                    <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-cyan-400" : "text-zinc-500"}`} />
-                    <span className="flex-1 truncate leading-relaxed">{conv.title === "New Chat" && isFil ? "Bagong Chat" : conv.title}</span>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <MessageSquare className={`h-3.5 w-3.5 shrink-0 ${isActive ? "text-[#2E7D32]" : "text-[#6B756D]"}`} />
+                      <span className="truncate">{conv.title === "New Chat" && isFil ? "Bagong Chat" : conv.title}</span>
+                    </div>
                     <button
                       onClick={e => deleteConversation(conv.id, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-400 text-zinc-500 transition-opacity"
-                      title={isFil ? "Burahin ang chat" : "Delete chat"}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-[#D32F2F] text-[#6B756D] transition-opacity"
+                      title={isFil ? "Burahin ang chat" : "Delete session"}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 );
@@ -543,275 +600,408 @@ export default function Chat() {
           )}
         </ScrollArea>
 
-        {/* User / Farm Info Footer */}
-        <div className="p-3 border-t border-zinc-800 bg-zinc-950/40">
-          <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs text-zinc-400">
-            <div className="h-7 w-7 rounded-full bg-blue-600/20 text-cyan-400 flex items-center justify-center shrink-0 border border-blue-500/30 font-semibold text-xs">
-              🌾
+        {/* Drawer Footer */}
+        <div className="p-3 border-t border-[#DDE5DE] dark:border-stone-800 bg-[#F8FAF7] dark:bg-stone-950">
+          <div className="flex items-center gap-2 px-2 py-1 text-xs text-[#6B756D]">
+            <div className="w-7 h-7 rounded-full bg-[#E8F5E9] text-[#166534] flex items-center justify-center font-bold text-xs border border-[#C8E6C9]">
+              {userInitials}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-zinc-200 truncate">
-                {settings.cityName || settings.provinceName || (isFil ? "Magsasakang Pilipino" : "Filipino Farmer")}
-              </div>
-              <div className="text-[10px] text-zinc-500 truncate">
-                {settings.preferredCrops.slice(0, 2).join(", ") || (isFil ? "Agrikultura sa Pilipinas" : "Philippine Agri")}
-              </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-[#26332A] dark:text-white truncate">
+                {settings.userName || "Eduardo Ramos"}
+              </p>
+              <p className="text-[10px] text-[#6B756D] truncate">
+                {locationLabel}
+              </p>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Chat Content Workspace */}
-      <main className="flex-1 flex flex-col min-w-0 bg-background relative h-full overflow-hidden">
+      {/* Main Chat Workspace */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
 
-        {/* Top Navbar */}
-        <header className="h-14 border-b border-border/60 px-4 flex items-center justify-between bg-background/80 backdrop-blur-sm z-10 shrink-0">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost" size="icon"
-              className="h-8 w-8 text-muted-foreground md:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
-
-            {/* Model selector badge */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-muted/30 text-xs font-semibold hover:bg-muted/60 transition-colors cursor-default">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-cyan-400" />
-              <span>Grownox 3.5 Flash Lite</span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground ml-0.5 opacity-60" />
+        {/* ==================== DEDICATED CHAT HEADER ==================== */}
+        <header className="bg-white/90 dark:bg-stone-900/90 backdrop-blur border-b border-[#DDE5DE] dark:border-stone-800 shadow-2xs shrink-0 z-20">
+          <div className="w-full max-w-5xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
+            
+            {/* Assistant Emblem & Identity */}
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <GrownoxAiAvatar size="md" showOnlineStatus={true} statusOnline={true} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="font-bold text-sm sm:text-base text-[#26332A] dark:text-white tracking-tight">
+                    Grownox
+                  </h1>
+                  <span className="hidden xs:inline-flex px-2 py-0.5 rounded-full bg-[#DCFCE7] border border-[#86EFAC] text-[#15803D] font-bold text-[10px] uppercase tracking-wider">
+                    Grownox AI
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-[#6B756D] flex items-center gap-1.5 truncate">
+                  <span>{isFil ? "AI Assistant sa Agrikultura" : "Agriculture AI Assistant"}</span>
+                  <span className="inline-block w-1 h-1 rounded-full bg-[#707a6f]"></span>
+                  <span className="text-[#2E7D32] font-semibold truncate">
+                    {isFil ? `Iniakma para sa ${locationLabel}` : `Tailored for ${locationLabel}`}
+                  </span>
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            {!hasPsgc && (
+            {/* Action Toolbar */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* New Topic Button */}
               <button
-                onClick={() => navigate("/settings")}
-                className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg hover:bg-amber-500/20 transition-colors flex items-center gap-1"
+                type="button"
+                onClick={startNewChat}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#DDE5DE] dark:border-stone-700 bg-white dark:bg-stone-800 text-[#26332A] dark:text-stone-200 hover:bg-[#F0F4F1] dark:hover:bg-stone-700 transition-colors text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title="Start a new consultation topic"
               >
-                <AlertCircle className="h-3 w-3" />
-                <span>{isFil ? "I-set ang lokasyon" : "Set location"}</span>
+                <Plus className="h-3.5 w-3.5 text-[#2E7D32]" />
+                <span className="hidden sm:inline">{isFil ? "Bagong Paksa" : "New Topic"}</span>
               </button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={startNewChat}
-              className="h-8 text-xs gap-1.5 rounded-lg border-border"
-            >
-              <Plus className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-              <span className="hidden sm:inline">{isFil ? "Bagong Chat" : "New Chat"}</span>
-            </Button>
+
+              {/* History Drawer Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(prev => !prev)}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#DDE5DE] dark:border-stone-700 bg-white dark:bg-stone-800 text-[#26332A] dark:text-stone-200 hover:bg-[#F0F4F1] dark:hover:bg-stone-700 transition-colors text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title="View consultation history"
+              >
+                <History className="h-3.5 w-3.5 text-[#6B756D]" />
+                <span className="hidden md:inline">{isFil ? "Kasaysayan" : "History"}</span>
+              </button>
+
+              {/* Quick Field Settings */}
+              <button
+                type="button"
+                onClick={() => navigate("/settings")}
+                className="w-8 h-8 rounded-xl border border-[#DDE5DE] dark:border-stone-700 flex items-center justify-center text-[#6B756D] hover:text-[#2E7D32] hover:bg-[#F0F4F1] dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                title="Farm Station Settings"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </button>
+            </div>
+
           </div>
         </header>
 
-        {/* Scrollable Conversation Container */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          {!activeId && messages.length === 0 ? (
-            /* Empty State / ChatGPT Starter Screen */
-            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-14rem)] px-4 max-w-2xl mx-auto text-center animate-in fade-in duration-300">
-              <div className="h-16 w-16 rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-5 border border-violet-500/20 shadow-xs">
-                <Sprout className="h-8 w-8" />
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 text-stone-900 dark:text-stone-100">
-                {isFil ? "Ano ang maipaglilingkod ko ngayon?" : "What can I help with today?"}
-              </h1>
-              <p className="text-sm text-stone-600 dark:text-stone-300 mb-8 max-w-md leading-relaxed">
-                {isFil ? (
-                  <>Ako si <span className="font-semibold text-stone-900 dark:text-stone-100">Grownox</span>, ang iyong AI agronomy assistant na dalubhasa sa mga pananim sa Pilipinas, pagsugpo sa peste, at pagsasaka sa rehiyon.</>
-                ) : (
-                  <>I am <span className="font-semibold text-stone-900 dark:text-stone-100">Grownox</span>, your AI agronomy assistant specialized in Philippine crops, pest management, and regional farming.</>
-                )}
-              </p>
+        {/* ==================== SCROLLABLE CHAT CANVAS ==================== */}
+        <div className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-6 py-4 sm:py-6 scroll-smooth">
+          <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 pb-32">
 
-              {/* Quick starter tiles */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl text-left">
-                {starters.map((s, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => sendMessage(s.prompt)}
-                    className="p-3.5 rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-card hover:bg-violet-50/50 dark:hover:bg-violet-950/20 hover:border-violet-300 dark:hover:border-violet-700/50 transition-all duration-200 group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
-                        {s.title}
-                      </div>
-                      <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1 line-clamp-2">
-                        {s.desc}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+            {/* Context Tag / Field Geolocation Pill */}
+            <div className="flex items-center justify-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E8F5E9] border border-[#C8E6C9] text-[#166534] text-xs font-semibold shadow-2xs max-w-full text-center truncate">
+                <span className="w-2 h-2 rounded-full bg-[#43A047] shrink-0 animate-pulse"></span>
+                <span className="truncate">
+                  {isFil ? "Pinag-uusapan:" : "Discussing:"} <strong>{cropsLabel}</strong> ({locationLabel} • Soil Clay-Loam)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigate("/settings")}
+                  className="ml-0.5 text-[#166534] hover:text-[#004b1e] shrink-0"
+                  title="Change Field Context"
+                >
+                  <SlidersHorizontal className="h-3 w-3" />
+                </button>
               </div>
             </div>
-          ) : (
-            /* Active Messages Stream */
-            <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-              {messages.map(msg => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-3 sm:gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  {/* Assistant Avatar */}
-                  {msg.role === "assistant" && (
-                    <div className="h-8 w-8 rounded-full bg-violet-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-semibold text-xs">
-                      <Bot className="h-4 w-4" />
-                    </div>
-                  )}
 
-                  {/* Message Bubble Container */}
-                  <div className={`group relative max-w-[88%] sm:max-w-[82%] ${
-                    msg.role === "user" ? "space-y-1" : "space-y-2 flex-1 min-w-0"
-                  }`}>
-                    {msg.role === "user" ? (
-                      <div className="bg-muted dark:bg-stone-800 text-foreground px-4 py-3 rounded-2xl rounded-tr-xs text-sm leading-relaxed border border-border/50">
-                        {msg.content}
+            {/* Empty State / Welcome Screen */}
+            {!activeId && messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 sm:py-10 max-w-3xl mx-auto text-center animate-in fade-in duration-300">
+                
+                {/* Large Grownox AI Avatar */}
+                <div className="mb-4">
+                  <GrownoxAiAvatar size="xl" showOnlineStatus={true} statusOnline={true} />
+                </div>
+
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <h2 className="text-xl sm:text-2xl font-black text-[#26332A] dark:text-white tracking-tight">
+                    Grownox
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] border border-[#86EFAC] text-[#15803D] font-bold text-[10px] uppercase">
+                    Grownox AI
+                  </span>
+                </div>
+
+                <p className="text-xs sm:text-sm text-[#6B756D] dark:text-stone-300 max-w-md mb-8 leading-relaxed">
+                  {isFil
+                    ? "Ang iyong AI Agronomy Assistant na nagbibigay ng praktikal na payo sa mga pananim ng Pilipinas, pagsugpo sa peste, at pamamahala ng sakahan."
+                    : "Your AI Agronomy Assistant for Philippine crops, localized pest management, and farm guidance."}
+                </p>
+
+                {/* Suggested Inquiries Section */}
+                <div className="w-full text-left">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B756D] flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-[#2E7D32]" />
+                      {isFil ? `Mga Rekomendadong Tanong para sa ${settings.cityName || "Pilipinas"}` : `Suggested Inquiries for ${locationLabel} Farmers`}
+                    </span>
+                    <span className="text-[11px] text-[#6B756D] hidden sm:inline">
+                      {isFil ? "Pindutin para magtanong agad" : "Tap to ask instant question"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {starters.map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => sendMessage(item.prompt)}
+                        className="text-left p-3.5 rounded-xl bg-white dark:bg-stone-900 border border-[#DDE5DE] dark:border-stone-800 hover:border-[#2E7D32] hover:bg-[#F8FAF8] dark:hover:bg-stone-850 transition-all duration-150 group shadow-2xs flex items-center justify-between gap-3 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-9 h-9 rounded-xl ${item.bgColor} ${item.textColor} flex items-center justify-center flex-shrink-0 text-base shadow-2xs group-hover:scale-105 transition-transform`}>
+                            {item.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B756D] block mb-0.5">
+                              {item.category}
+                            </span>
+                            <span className="font-semibold text-xs sm:text-[13px] text-[#26332A] dark:text-stone-100 group-hover:text-[#2E7D32] dark:group-hover:text-emerald-400 transition-colors line-clamp-1 block">
+                              {item.title}
+                            </span>
+                            <span className="text-[11px] text-[#6B756D] truncate block mt-0.5">
+                              {item.desc}
+                            </span>
+                          </div>
+                        </div>
+                        <ArrowUpRight className="h-4 w-4 text-[#BFC9BD] group-hover:text-[#2E7D32] group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              /* Active Conversation Messages */
+              messages.map(msg => (
+                <div key={msg.id} className="space-y-1">
+                  {msg.role === "user" ? (
+                    /* USER MESSAGE */
+                    <div className="flex justify-end gap-2.5 sm:gap-3 max-w-2xl ml-auto">
+                      <div className="flex flex-col items-end min-w-0">
+                        <div className="bg-[#2E7D32] text-white px-4 py-3 rounded-2xl rounded-tr-xs shadow-xs text-xs sm:text-sm font-normal leading-relaxed break-words">
+                          {msg.content}
+                        </div>
+                        <span className="text-[10px] sm:text-[11px] text-[#6B756D] mt-1 mr-1">
+                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} • Sent from Field Station
+                        </span>
                       </div>
-                    ) : (
-                      <div className="py-1">
-                        <MarkdownText text={msg.content} />
+                      <div className="w-8 h-8 rounded-full bg-[#166534] text-white flex-shrink-0 flex items-center justify-center font-bold text-xs shadow-xs ring-2 ring-white dark:ring-stone-800">
+                        {userInitials}
+                      </div>
+                    </div>
+                  ) : (
+                    /* GROWNOX AI RESPONSE */
+                    <div className="flex items-start gap-2.5 sm:gap-3 max-w-3xl mr-auto w-full">
+                      {/* Grownox AI Avatar beside response */}
+                      <GrownoxAiAvatar size="sm" className="mt-1 shrink-0" />
 
-                        {/* Message Action Bar (Copy, etc.) */}
-                        <div className="flex items-center gap-1 mt-3 text-muted-foreground opacity-80 group-hover:opacity-100 transition-opacity">
+                      {/* Response Container */}
+                      <div className="flex-1 bg-white dark:bg-stone-900 border border-[#DDE5DE] dark:border-stone-800 rounded-2xl rounded-tl-xs p-4 sm:p-5 shadow-xs text-[#26332A] dark:text-stone-100 min-w-0 break-words">
+                        {/* Protocol Header Badge */}
+                        <div className="flex items-center justify-between border-b border-[#DDE5DE] dark:border-stone-800 pb-2.5 mb-3 flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#43A047] animate-pulse"></span>
+                            <span className="font-bold text-xs sm:text-sm text-[#166534] dark:text-emerald-400">
+                              Agronomic Diagnosis & Protocol
+                            </span>
+                          </div>
+                          <span className="text-[10px] sm:text-[11px] font-mono text-[#6B756D] bg-[#F0F4F1] dark:bg-stone-800 px-2 py-0.5 rounded">
+                            Grownox AI
+                          </span>
+                        </div>
+
+                        {/* Rich Markdown Response */}
+                        <MarkdownViewer text={msg.content} />
+
+                        {/* Quick Context Action Buttons */}
+                        <div className="pt-3 mt-3 border-t border-[#DDE5DE] dark:border-stone-800 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => navigate("/farming-plan")}
+                              className="px-2.5 py-1 rounded-lg bg-[#E8F5E9] hover:bg-[#C8E6C9] text-[#166534] font-semibold text-xs flex items-center gap-1.5 transition-colors border border-[#A5D6A7] cursor-pointer"
+                            >
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>{isFil ? "Itala sa Farm Planner" : "Log in Farm Planner"}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate("/tutorials")}
+                              className="px-2.5 py-1 rounded-lg bg-[#F8FAF7] dark:bg-stone-800 hover:bg-[#F0F4F1] text-[#26332A] dark:text-stone-200 font-semibold text-xs flex items-center gap-1.5 transition-colors border border-[#DDE5DE] dark:border-stone-700 cursor-pointer"
+                            >
+                              <Video className="h-3.5 w-3.5 text-[#2E7D32]" />
+                              <span>{isFil ? "Tingnan ang Mga Tutorial" : "View Agri Tutorials"}</span>
+                            </button>
+                          </div>
+
+                          {/* Copy Action */}
                           <button
+                            type="button"
                             onClick={() => handleCopyMessage(msg.id, msg.content)}
-                            className="p-1.5 rounded-lg hover:bg-muted text-xs flex items-center gap-1 transition-colors"
-                            title={isFil ? "Kopyahin ang mensahe" : "Copy message"}
+                            className="p-1.5 rounded-lg text-[#6B756D] hover:text-[#26332A] hover:bg-[#F0F4F1] dark:hover:bg-stone-800 text-xs flex items-center gap-1 transition-colors cursor-pointer ml-auto"
+                            title={isFil ? "Kopyahin ang reseta" : "Copy prescription notes"}
                           >
                             {copiedMsgId === msg.id ? (
                               <>
-                                <Check className="h-3.5 w-3.5 text-violet-500" />
-                                <span className="text-[11px] text-violet-500">{isFil ? "Na-kopyang" : "Copied"}</span>
+                                <Check className="h-3.5 w-3.5 text-[#2E7D32]" />
+                                <span className="text-[11px] text-[#2E7D32] font-semibold">{t.copied}</span>
                               </>
                             ) : (
                               <>
                                 <Copy className="h-3.5 w-3.5" />
+                                <span className="text-[11px]">{t.copy}</span>
                               </>
                             )}
                           </button>
                         </div>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* User Avatar */}
-                  {msg.role === "user" && (
-                    <div className="h-8 w-8 rounded-full bg-stone-200 dark:bg-stone-700 text-foreground flex items-center justify-center shrink-0 mt-0.5">
-                      <User className="h-4 w-4" />
+                      </div>
                     </div>
                   )}
                 </div>
-              ))}
+              ))
+            )}
 
-              {/* Streaming AI Response */}
-              {streaming && (
-                <div className="flex gap-3 sm:gap-4 justify-start">
-                  <div className="h-8 w-8 rounded-full bg-violet-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-semibold text-xs">
-                    <Bot className="h-4 w-4 animate-pulse" />
+            {/* Streaming Indicator */}
+            {streaming && (
+              <div className="flex items-start gap-2.5 sm:gap-3 max-w-3xl mr-auto w-full">
+                <GrownoxAiAvatar size="sm" className="mt-1 shrink-0" />
+                <div className="flex-1 bg-white dark:bg-stone-900 border border-[#DDE5DE] dark:border-stone-800 rounded-2xl rounded-tl-xs p-4 sm:p-5 shadow-xs text-[#26332A] dark:text-stone-100 min-w-0">
+                  <div className="flex items-center justify-between border-b border-[#DDE5DE] dark:border-stone-800 pb-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#2E7D32] animate-ping"></span>
+                      <span className="font-bold text-xs sm:text-sm text-[#166534] dark:text-emerald-400">
+                        {isFil ? "Nagsusuri si Grownox..." : "Grownox Analyzing Field Context..."}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 py-1">
-                    {streamingContent ? (
-                      <MarkdownText text={streamingContent} />
-                    ) : (
-                      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground font-medium">
-                        <span className="h-2 w-2 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="h-2 w-2 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="h-2 w-2 rounded-full bg-violet-500 animate-bounce" style={{ animationDelay: "300ms" }} />
-                        <span className="ml-1 text-violet-600 dark:text-violet-400 font-semibold animate-pulse">{isFil ? "Naghahanda ng sagot si Grownox..." : "Grownox is working..."}</span>
-                      </div>
-                    )}
-                  </div>
+
+                  {streamingContent ? (
+                    <MarkdownViewer text={streamingContent} />
+                  ) : (
+                    <div className="flex items-center gap-2 py-2 text-xs text-[#6B756D] font-medium">
+                      <span className="h-2 w-2 rounded-full bg-[#2E7D32] animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="h-2 w-2 rounded-full bg-[#2E7D32] animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="h-2 w-2 rounded-full bg-[#2E7D32] animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <span className="ml-1 text-[#166534] font-semibold animate-pulse">
+                        {isFil ? "Kumokonsulta sa Grownox AI..." : "Consulting agronomic database for your crops..."}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Error banner */}
-              {error && (
-                <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl text-xs flex items-center justify-between gap-3 max-w-full overflow-hidden break-words mx-auto">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span className="flex-1 min-w-0 break-words">{cleanErrorMessage(error)}</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setError(null);
-                      const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
-                      if (lastUserMsg?.content) {
-                        sendMessage(lastUserMsg.content);
-                      }
-                    }}
-                    className="h-7 px-2.5 text-xs shrink-0 border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
-                  >
-                    {isFil ? "Subukan Ulit" : "Retry"}
-                  </Button>
+            {/* Error Message Display */}
+            {error && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/50 dark:text-rose-400 rounded-xl text-xs flex items-center justify-between gap-3 max-w-full overflow-hidden break-words">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                  <span className="flex-1 min-w-0 break-words">{cleanErrorMessage(error)}</span>
                 </div>
-              )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setError(null);
+                    const lastUser = [...messages].reverse().find(m => m.role === "user");
+                    if (lastUser?.content) sendMessage(lastUser.content);
+                  }}
+                  className="h-7 px-2.5 text-xs shrink-0 border-rose-300 text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-900/40 cursor-pointer"
+                >
+                  {isFil ? "Subukan Ulit" : "Retry"}
+                </Button>
+              </div>
+            )}
 
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </div>
-
-        {/* ChatGPT Style Floating Prompt Input Bar */}
-        <div className="p-3 sm:p-4 bg-background border-t border-border/60 shrink-0">
-          <div className="max-w-3xl mx-auto relative">
-
-            {/* Rounded Pill Container */}
-            <div className="relative flex items-end gap-2 bg-muted/40 dark:bg-stone-900 border border-border rounded-[24px] focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/20 transition-all shadow-xs p-1.5 sm:p-2">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={streaming}
-                placeholder={
-                  aiReady
-                    ? isFil
-                      ? "Magtanong kay Grownox tungkol sa iyong mga pananim, peste, lupa, o panahon..."
-                      : "Ask Grownox about your crops, pests, soil, or weather..."
-                    : isFil
-                    ? "Kumokonekta sa AI..."
-                    : "Connecting to AI..."
-                }
-                rows={1}
-                className="flex-1 resize-none bg-transparent px-3 py-2 text-sm text-foreground focus:outline-none disabled:opacity-50 min-h-[40px] max-h-[160px] leading-relaxed"
-                onInput={e => {
-                  const el = e.currentTarget;
-                  el.style.height = "40px";
-                  el.style.height = Math.min(el.scrollHeight, 160) + "px";
-                }}
-              />
-
-              {/* Submit / Send Button */}
-              <Button
-                onClick={() => sendMessage()}
-                disabled={!input.trim() || streaming}
-                size="icon"
-                className={`h-9 w-9 rounded-full shrink-0 transition-all ${
-                  input.trim() && !streaming
-                    ? "bg-violet-600 hover:bg-violet-700 text-white shadow-xs"
-                    : "bg-muted text-muted-foreground opacity-50"
-                }`}
-              >
-                {streaming ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowUp className="h-4 w-4 stroke-[2.5]" />
-                )}
-              </Button>
-            </div>
-
-            {/* Disclaimer footer text */}
-            <p className="text-[11px] text-muted-foreground/60 text-center mt-2">
-              {isFil
-                ? "Nagbibigay ang Grownox AI ng gabay sa agrikultura. Sumangguni sa lokal na agronomista para sa mahahalagang desisyon."
-                : "Grownox AI provides agricultural guidance. Verify important decisions with local agronomists."}
-            </p>
+            <div ref={bottomRef} />
           </div>
         </div>
 
-      </main>
+        {/* ==================== FIXED FLOATING COMPOSER ==================== */}
+        <footer className="fixed sm:sticky bottom-0 left-0 right-0 z-30 pointer-events-none pb-3 pt-2 bg-gradient-to-t from-[#F8FAF7] via-[#F8FAF7]/95 to-transparent dark:from-background dark:via-background/95">
+          <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 pointer-events-auto">
+            
+            {/* Rounded Composer Box */}
+            <div className="bg-white dark:bg-stone-900 rounded-2xl border border-[#DDE5DE] dark:border-stone-800 shadow-md p-1.5 sm:p-2 transition-all focus-within:border-[#2E7D32] focus-within:ring-2 focus-within:ring-[#2E7D32]/20">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  sendMessage();
+                }}
+                className="flex items-end gap-1.5 sm:gap-2"
+              >
+                {/* Textarea Input */}
+                <div className="flex-1 min-w-0">
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={streaming}
+                    rows={1}
+                    placeholder={
+                      aiReady
+                        ? isFil
+                          ? "Tanungin ang Grownox AI..."
+                          : "Ask Grownox AI..."
+                        : isFil
+                        ? "Kumokonekta sa AI..."
+                        : "Connecting to AI..."
+                    }
+                    className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none text-xs sm:text-sm text-[#26332A] dark:text-stone-100 placeholder-[#6B756D] py-2 px-2.5 outline-none resize-none leading-relaxed block overflow-y-hidden"
+                    style={{ minHeight: "38px", maxHeight: "140px" }}
+                  />
+                </div>
+
+                {/* Field Crop Context Pill */}
+                <div className="hidden md:flex items-center gap-1 text-[11px] font-bold uppercase bg-[#F0F4F1] dark:bg-stone-800 text-[#475549] dark:text-stone-300 px-2.5 py-2 rounded-lg shrink-0 mb-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#43A047]"></span>
+                  <span>{settings.preferredCrops?.[0] || "Block 2-A"}</span>
+                </div>
+
+                {/* Submit / Send Button */}
+                <button
+                  type="submit"
+                  disabled={!input.trim() || streaming}
+                  className={`h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm shadow-xs transition-all shrink-0 cursor-pointer mb-0.5 ${
+                    input.trim() && !streaming
+                      ? "bg-[#2E7D32] hover:bg-[#1b5e20] text-white active:scale-95"
+                      : "bg-[#F0F4F1] dark:bg-stone-800 text-[#6B756D] opacity-60 cursor-not-allowed"
+                  }`}
+                >
+                  {streaming ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span className="hidden sm:inline">{isFil ? "Ipadala" : "Send"}</span>
+                      <Send className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+
+            {/* Regulatory & Safety Disclaimer */}
+            <div className="text-center mt-1.5">
+              <p className="text-[10px] sm:text-[11px] text-[#6B756D] font-medium flex items-center justify-center gap-1.5 px-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#F9A825] shrink-0"></span>
+                <span className="truncate">
+                  {isFil
+                    ? "Nagbibigay ang Grownox ng gabay sa agrikultura para sa sanggunian. Kumonsulta sa lokal na eksperto para sa aplikasyon ng kemikal."
+                    : "Grownox provides agronomic guidance for reference. Always consult local agricultural experts for field chemical applications."}
+                </span>
+              </p>
+            </div>
+
+          </div>
+        </footer>
+
+      </div>
     </div>
   );
 }

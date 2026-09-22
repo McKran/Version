@@ -998,11 +998,11 @@ export function generateFarmingPlan(
       id: "stage-prep",
       name: isFil ? "Paghahanda ng Lupa" : "Land Preparation",
       type: "preparation",
-      startDay: -14,
-      endDay: 0,
+      startDay: 0,
+      endDay: Math.min(5, Math.max(1, Math.round(days.germination * 0.5))),
       description: isFil
-        ? `Ihanda ang lupa 2 linggo bago magtanim. Ihalo ang mga organikong bagay. Klima: karaniwang temp ${climate.annualMeanTemp}°C, taunang ulan ${climate.annualTotalRainfall}mm.`
-        : `Prepare soil 2 weeks before planting. Incorporate organic matter. Climate: mean ${climate.annualMeanTemp}°C, annual rainfall ${climate.annualTotalRainfall}mm.`,
+        ? `Ihanda ang lupa sa simula ng pagtatanim (Araw 1). Ihalo ang mga organikong bagay. Klima: karaniwang temp ${climate.annualMeanTemp}°C, taunang ulan ${climate.annualTotalRainfall}mm.`
+        : `Prepare soil at the start of planting cycle (Day 1). Incorporate organic matter. Climate: mean ${climate.annualMeanTemp}°C, annual rainfall ${climate.annualTotalRainfall}mm.`,
       tasks: isFil ? [
         "Magsagawa ng malalim na pag-aararo hanggang 20-25cm ang lalim",
         "Pagsusuri ng pH ng lupa (target: 6.0-7.0 para sa karamihan ng pananim)",

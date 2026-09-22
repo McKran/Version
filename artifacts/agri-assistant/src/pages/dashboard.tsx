@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { useLocationStore } from "@/hooks/use-location";
 import { useSettings } from "@/hooks/use-settings";
+import { DisasterAlertsSection } from "@/components/disaster-alerts-section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
+import { GrownoxIcon } from "@/components/grownox-icon";
 import {
   CloudSun,
   TrendingUp,
@@ -56,6 +58,7 @@ interface ListingItem {
 export default function Dashboard() {
   const { location, setLocation } = useLocationStore();
   const { settings, t } = useSettings();
+  const isFil = settings.language === "fil";
 
   // Location Selector Modal State
   const [locationModalOpen, setLocationModalOpen] = useState(false);
@@ -141,6 +144,24 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-12 font-sans text-stone-900 dark:text-stone-100">
+      {/* PERSONALIZED WELCOME BANNER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            {settings.userName
+              ? (isFil ? `Maligayang pagbabalik, ${settings.userName}!` : `Welcome back, ${settings.userName}!`)
+              : (isFil ? "Maligayang pagbabalik!" : "Welcome back!")}
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+            <span>{location}</span>
+          </p>
+        </div>
+      </div>
+
+      {/* COMPACT DISASTER ALERT BANNER IF ACTIVE */}
+      <DisasterAlertsSection location={location} compact={true} />
+
       {/* QUICK CATEGORY NAVIGATION STRIP */}
       <nav className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
@@ -148,7 +169,7 @@ export default function Dashboard() {
           { href: "/market", icon: TrendingUp, label: t.market, badge: "DA Data", color: "bg-emerald-50/80 text-emerald-800 hover:bg-emerald-700 hover:text-white border-emerald-200/60" },
           { href: "/marketplace", icon: Store, label: t.marketplace, badge: t.trading, color: "bg-amber-50/90 text-amber-900 hover:bg-gradient-to-r hover:from-amber-600 hover:to-rose-600 hover:text-white border-amber-200/80" },
           { href: "/farming-plan", icon: ClipboardList, label: t.farmingPlan, badge: t.tasks, color: "bg-emerald-100/70 text-emerald-900 hover:bg-emerald-800 hover:text-white border-emerald-200/80" },
-          { href: "/chat", icon: Bot, label: t.aiAdvisor, badge: "Gemini", color: "bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50 text-indigo-800 hover:bg-gradient-to-r hover:from-blue-600 hover:to-cyan-600 hover:text-white border-blue-200/60" },
+          { href: "/chat", icon: GrownoxIcon, label: t.aiAdvisor, badge: "Grownox", color: "bg-gradient-to-br from-blue-50 via-indigo-50 to-cyan-50 text-indigo-800 hover:bg-gradient-to-r hover:from-blue-600 hover:to-cyan-600 hover:text-white border-blue-200/60" },
           { href: "/tutorials", icon: Video, label: t.tutorials, badge: t.guides, color: "bg-rose-50/80 text-rose-800 hover:bg-rose-600 hover:text-white border-rose-200/60" },
         ].map((item) => (
           <Link
@@ -293,10 +314,10 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 via-indigo-500/20 to-cyan-500/20 text-indigo-700 dark:text-cyan-400">
-                  <Bot className="h-5 w-5" />
+                  <GrownoxIcon className="h-5 w-5" />
                 </div>
                 <h2 className="text-sm font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-                  🤖 {t.grownoxInsight}
+                  {t.grownoxInsight}
                 </h2>
               </div>
               <Badge className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white text-[10px] shadow-xs border-0">
@@ -426,10 +447,12 @@ export default function Dashboard() {
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <MapPin className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-              Set Farm Location
+              {isFil ? "Itakda ang Lokasyon ng Sakahan" : "Set Farm Location"}
             </DialogTitle>
             <DialogDescription className="text-xs text-stone-500">
-              Enter your municipality, province, or region in the Philippines to tailor weather forecasts & DA market prices.
+              {isFil
+                ? "Ilagay ang iyong bayan, lalawigan, o rehiyon sa Pilipinas upang iakma ang ulat ng panahon at presyo ng DA."
+                : "Enter your municipality, province, or region in the Philippines to tailor weather forecasts & DA market prices."}
             </DialogDescription>
           </DialogHeader>
 
@@ -439,7 +462,7 @@ export default function Dashboard() {
               <Input
                 value={tempLocation}
                 onChange={(e) => setTempLocation(e.target.value)}
-                placeholder="e.g. Tacloban City, Leyte"
+                placeholder={isFil ? "Hal. Tacloban City, Leyte" : "e.g. Tacloban City, Leyte"}
                 className="pl-9 text-xs h-9 rounded-xl"
               />
             </div>
@@ -466,14 +489,14 @@ export default function Dashboard() {
               onClick={() => setLocationModalOpen(false)}
               className="text-xs h-8 rounded-xl"
             >
-              Cancel
+              {isFil ? "Kanselahin" : "Cancel"}
             </Button>
             <Button
               size="sm"
               onClick={handleSaveLocation}
               className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-8 rounded-xl font-bold"
             >
-              Save Location
+              {isFil ? "I-save ang Lokasyon" : "Save Location"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -6,6 +6,7 @@ import {
   getMarketplaceListingById,
   createMarketplaceListing,
   updateMarketplaceListing,
+  deleteMarketplaceListing,
   createBuyerOffer,
   respondToBuyerOffer,
   createDirectOrder,
@@ -17,6 +18,10 @@ import {
   toggleFavorite,
   isFavorite,
   calculateMinAllowedOffer,
+  createOrUpdateReview,
+  getReviews,
+  getSellerRatingSummary,
+  getCropStandardImage,
 } from "../lib/marketplace-store";
 import { calculatePriceStatistics } from "../lib/da-price-engine";
 
@@ -97,15 +102,30 @@ router.get("/marketplace/listings/:id", async (req, res) => {
  */
 router.post("/marketplace/listings", async (req, res) => {
   try {
-    const body = req.body;
-    if (!body.sellerName || !body.sellerPhone || !body.cropName || !body.quantityAvailableKg || !body.askingPricePhpKg || !body.region || !body.province || !body.municipality) {
-      res.status(400).json({
-        error: "Missing required listing fields (sellerName, sellerPhone, cropName, quantityAvailableKg, askingPricePhpKg, region, province, municipality)",
-      });
-      return;
-    }
+    const body = req.body || {};
+    
+    // Auto fill defaults if fields are missing or empty
+    const normalizedPayload = {
+      ...body,
+      sellerName: body.sellerName || "Authenticated Farmer",
+      sellerPhone: body.sellerPhone || "+63 917 000 0000",
+      sellerFarmName: body.sellerFarmName || `${body.sellerName || "Farmer"}'s Organic Farm`,
+      cropName: body.cropName || "Rice",
+      variety: body.variety || "Standard Harvest",
+      category: body.category || "Grains & Staples",
+      quantityAvailableKg: Number(body.quantityAvailableKg) || 100,
+      askingPricePhpKg: Number(body.askingPricePhpKg) || 50,
+      region: body.region || "Region XI - Davao Region",
+      province: body.province || "Davao Oriental",
+      municipality: body.municipality || "Mati City",
+      barangay: body.barangay || "Central",
+      streetAddress: body.streetAddress || "",
+      description: body.description || "Fresh harvest ready for order.",
+      deliveryOptions: Array.isArray(body.deliveryOptions) && body.deliveryOptions.length > 0 ? body.deliveryOptions : ["Farm Gate Pickup", "Local Delivery"],
+      photoUrls: Array.isArray(body.photoUrls) && body.photoUrls.length > 0 ? body.photoUrls : ["https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=800&q=80"],
+    };
 
-    const newListing = createMarketplaceListing(body);
+    const newListing = createMarketplaceListing(normalizedPayload);
     res.status(201).json(newListing);
   } catch (err: any) {
     req.log?.error({ err }, "Error creating marketplace listing");
@@ -126,6 +146,24 @@ router.put("/marketplace/listings/:id", async (req, res) => {
   } catch (err: any) {
     req.log?.error({ err }, "Error updating marketplace listing");
     res.status(400).json({ error: err.message || "Failed to update listing" });
+  }
+});
+
+/**
+ * 4b. DELETE /api/marketplace/listings/:id
+ */
+router.delete("/marketplace/listings/:id", async (req, res) => {
+  try {
+    const listingId = req.params.id;
+    const deleted = deleteMarketplaceListing(listingId);
+    if (!deleted) {
+      res.status(404).json({ error: "Listing not found or already deleted" });
+      return;
+    }
+    res.json({ success: true, listingId });
+  } catch (err: any) {
+    req.log?.error({ err }, "Error deleting marketplace listing");
+    res.status(400).json({ error: err.message || "Failed to delete listing" });
   }
 });
 
@@ -184,7 +222,7 @@ router.patch("/marketplace/offers/:id/respond", async (req, res) => {
  */
 router.post("/marketplace/orders", async (req, res) => {
   try {
-    const { listingId, buyerName, buyerContact, buyerLocation, quantityKg, deliveryMethod } = req.body;
+    const { listingId, buyerName, buyerContact, buyerLocation, buyerBarangay, buyerStreetAddress, quantityKg, deliveryMethod } = req.body;
 
     if (!listingId || !buyerName || !buyerContact || !quantityKg) {
       res.status(400).json({ error: "Missing required order parameters" });
@@ -196,6 +234,8 @@ router.post("/marketplace/orders", async (req, res) => {
       buyerName,
       buyerContact,
       buyerLocation: buyerLocation || "General Public",
+      buyerBarangay,
+      buyerStreetAddress,
       quantityKg: parseFloat(quantityKg),
       deliveryMethod,
     });
@@ -408,5 +448,74 @@ Respond ONLY with valid JSON matching these exact keys.`;
 
 router.get("/marketplace/listings/:id/ai-analysis", handleListingAiAnalysis);
 router.get("/marketplace/listings/:id/ai-eval", handleListingAiAnalysis);
+
+/**
+ * REVIEWS & RATINGS ENDPOINTS
+ */
+
+/**
+ * POST /api/marketplace/reviews
+ * Allows buyers to submit or update a review for a verified completed order
+ */
+router.post("/marketplace/reviews", async (req, res) => {
+  try {
+    const { orderId, buyerName, rating, productQualityRating, sellerExperienceRating, comment } = req.body;
+
+    if (!orderId || !rating || !comment) {
+      res.status(400).json({ error: "Missing required review fields (orderId, rating, comment)" });
+      return;
+    }
+
+    const review = createOrUpdateReview({
+      orderId,
+      buyerName: buyerName || "Buyer",
+      rating: Number(rating),
+      productQualityRating: productQualityRating ? Number(productQualityRating) : undefined,
+      sellerExperienceRating: sellerExperienceRating ? Number(sellerExperienceRating) : undefined,
+      comment,
+    });
+
+    const summary = getSellerRatingSummary(review.sellerId);
+
+    res.status(201).json({ review, sellerSummary: summary });
+  } catch (err: any) {
+    req.log?.error({ err }, "Error submitting marketplace review");
+    res.status(400).json({ error: err.message || "Failed to submit review" });
+  }
+});
+
+/**
+ * GET /api/marketplace/reviews
+ * Fetch reviews filtered by sellerId, listingId, orderId, or buyerName
+ */
+router.get("/marketplace/reviews", async (req, res) => {
+  try {
+    const sellerId = req.query.sellerId as string;
+    const listingId = req.query.listingId as string;
+    const orderId = req.query.orderId as string;
+    const buyerName = req.query.buyerName as string;
+
+    const reviewsList = getReviews({ sellerId, listingId, orderId, buyerName });
+    res.json(reviewsList);
+  } catch (err) {
+    req.log?.error({ err }, "Error fetching reviews");
+    res.status(500).json({ error: "Failed to fetch reviews" });
+  }
+});
+
+/**
+ * GET /api/marketplace/sellers/:sellerId/reviews
+ * Fetch rating summary and all verified reviews for a specific seller
+ */
+router.get("/marketplace/sellers/:sellerId/reviews", async (req, res) => {
+  try {
+    const sellerId = req.params.sellerId;
+    const summary = getSellerRatingSummary(sellerId);
+    res.json(summary);
+  } catch (err) {
+    req.log?.error({ err }, "Error fetching seller review summary");
+    res.status(500).json({ error: "Failed to fetch seller review summary" });
+  }
+});
 
 export default router;

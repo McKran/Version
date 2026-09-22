@@ -17,7 +17,7 @@
 
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { farmingPlans } from "@workspace/db";
+import { farmingPlans, userPlantingPlans } from "@workspace/db";
 import { and, eq, gt } from "drizzle-orm";
 import {
   fetchHistoricalWeather,
@@ -28,8 +28,134 @@ import {
   type GeoResult,
 } from "../lib/open-data-fetcher";
 import { generateFarmingPlan, listAvailableCrops } from "../lib/gdd-engine";
+import { getCached, setCached } from "../lib/db-cache";
 
 const router = Router();
+
+export interface UserPlanRecord {
+  id: string;
+  userKey: string;
+  name: string;
+  crop: string;
+  plantingDate: string;
+  status: "active" | "completed" | "archived";
+  plan: any;
+  completedTasks: Record<string, boolean>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const inMemoryPlansStore = new Map<string, UserPlanRecord[]>();
+
+async function getUserPlans(userKey: string): Promise<UserPlanRecord[]> {
+  try {
+    const rows = await db
+      .select()
+      .from(userPlantingPlans)
+      .where(eq(userPlantingPlans.userId, userKey));
+
+    if (rows && rows.length > 0) {
+      const mapped = rows.map((r: any) => ({
+        id: r.id,
+        userKey: r.userId,
+        name: r.name,
+        crop: r.crop,
+        plantingDate: r.plantingDate,
+        status: r.status as any,
+        plan: r.planData,
+        completedTasks: r.completedTasks || {},
+        createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
+        updatedAt: r.updatedAt ? new Date(r.updatedAt).toISOString() : new Date().toISOString(),
+      }));
+      mapped.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      return mapped;
+    }
+  } catch {
+    // Non-fatal fallback
+  }
+
+  const cacheKey = `user_plans_index_${userKey}`;
+  const cached = await getCached<UserPlanRecord[]>(cacheKey);
+  if (cached && Array.isArray(cached) && cached.length > 0) {
+    return cached;
+  }
+
+  return inMemoryPlansStore.get(userKey) || [];
+}
+
+async function saveUserPlanRecord(planRecord: UserPlanRecord): Promise<void> {
+  const { id, userKey, name, crop, plantingDate, status, plan, completedTasks, createdAt, updatedAt } = planRecord;
+
+  try {
+    await db
+      .insert(userPlantingPlans)
+      .values({
+        id,
+        userId: userKey,
+        name,
+        crop,
+        plantingDate,
+        status,
+        planData: plan,
+        completedTasks,
+        createdAt: new Date(createdAt),
+        updatedAt: new Date(updatedAt),
+      })
+      .onConflictDoUpdate({
+        target: userPlantingPlans.id,
+        set: {
+          name,
+          crop,
+          plantingDate,
+          status,
+          planData: plan,
+          completedTasks,
+          updatedAt: new Date(updatedAt),
+        },
+      });
+  } catch {
+    // Non-fatal
+  }
+
+  let existing = await getUserPlans(userKey);
+  const index = existing.findIndex(p => p.id === id);
+  if (index >= 0) {
+    existing[index] = planRecord;
+  } else {
+    existing = [planRecord, ...existing];
+  }
+
+  inMemoryPlansStore.set(userKey, existing);
+  const cacheKey = `user_plans_index_${userKey}`;
+  await setCached(cacheKey, existing, 365 * 24 * 60 * 60 * 1000);
+}
+
+async function deleteUserPlanRecord(userKey: string, planId: string): Promise<boolean> {
+  try {
+    await db
+      .delete(userPlantingPlans)
+      .where(and(eq(userPlantingPlans.id, planId), eq(userPlantingPlans.userId, userKey)));
+  } catch {}
+
+  let existing = await getUserPlans(userKey);
+  const updated = existing.filter(p => p.id !== planId);
+  inMemoryPlansStore.set(userKey, updated);
+  const cacheKey = `user_plans_index_${userKey}`;
+  await setCached(cacheKey, updated, 365 * 24 * 60 * 60 * 1000);
+
+  const mainPlanKey = `user_main_plan_id_${userKey}`;
+  const currentMainId = await getCached<string>(mainPlanKey);
+  if (currentMainId === planId) {
+    const nextActive = updated.find(p => p.status === "active") || updated[0];
+    if (nextActive) {
+      await setCached(mainPlanKey, nextActive.id, 365 * 24 * 60 * 60 * 1000);
+    } else {
+      await setCached(mainPlanKey, "", 1000);
+    }
+  }
+
+  return true;
+}
 
 // Default: Manila, Philippines
 const PH_DEFAULT_LAT = 14.5995;
@@ -236,6 +362,315 @@ router.post("/farming-plan/generate", async (req, res) => {
     req.log.error({ err }, "Error generating farming plan");
     res.status(500).json({ error: "Failed to generate farming plan. Please try again." });
   }
+});
+
+/**
+ * GET /api/farming-plan/list
+ * Returns all saved planting plans for the given userKey.
+ */
+router.get("/farming-plan/list", async (req, res) => {
+  const userKey = (req.query.userKey as string) || "default";
+  try {
+    const plans = await getUserPlans(userKey);
+    res.json(plans);
+  } catch (err: any) {
+    req.log.error({ err, userKey }, "Error fetching user plans list");
+    res.status(500).json({ error: "Failed to fetch saved plans" });
+  }
+});
+
+/**
+ * GET /api/farming-plan/get/:id
+ * Retrieve a specific plan by ID for userKey.
+ */
+router.get("/farming-plan/get/:id", async (req, res) => {
+  const userKey = (req.query.userKey as string) || "default";
+  const planId = req.params.id;
+  try {
+    const plans = await getUserPlans(userKey);
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) {
+      res.status(404).json({ error: "Plan not found" });
+      return;
+    }
+    res.json(plan);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch plan" });
+  }
+});
+
+/**
+ * POST /api/farming-plan/save
+ * Save or update a planting plan record.
+ * Generates a new unique plan ID if none is provided.
+ */
+router.post("/farming-plan/save", async (req, res) => {
+  const {
+    id: rawId,
+    userKey = "default",
+    name: rawName,
+    crop,
+    plantingDate,
+    status = "active",
+    plan,
+    completedTasks = {},
+  } = req.body;
+
+  if (!crop || !plantingDate || !plan) {
+    res.status(400).json({ error: "crop, plantingDate, and plan object are required" });
+    return;
+  }
+
+  const id = rawId || `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const defaultName = `${crop} Plan (${new Date(plantingDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})`;
+  const name = (rawName && rawName.trim().length > 0) ? rawName.trim() : defaultName;
+  const now = new Date().toISOString();
+
+  // If updating existing, preserve createdAt
+  let createdAt = now;
+  if (rawId) {
+    const existingList = await getUserPlans(userKey);
+    const existing = existingList.find(p => p.id === rawId);
+    if (existing) createdAt = existing.createdAt;
+  }
+
+  const planRecord: UserPlanRecord = {
+    id,
+    userKey,
+    name,
+    crop,
+    plantingDate,
+    status: status as any,
+    plan,
+    completedTasks: completedTasks || {},
+    createdAt,
+    updatedAt: now,
+  };
+
+  try {
+    await saveUserPlanRecord(planRecord);
+
+    if (status === "active") {
+      const mainPlanKey = `user_main_plan_id_${userKey}`;
+      await setCached(mainPlanKey, id, 365 * 24 * 60 * 60 * 1000);
+    }
+
+    // Also update legacy active cache for backwards compat
+    const legacyKey = `user_active_plan_${userKey}_${crop.toLowerCase()}`;
+    await setCached(legacyKey, { crop, plantingDate, plan, completedTasks, updatedAt: now }, 30 * 24 * 60 * 60 * 1000);
+
+    req.log.info({ userKey, planId: id, name, crop }, "Saved user planting plan");
+    res.json({ success: true, plan: planRecord });
+  } catch (err: any) {
+    req.log.error({ err }, "Error saving user planting plan");
+    res.status(500).json({ error: "Failed to save plan. Please try again." });
+  }
+});
+
+/**
+ * POST /api/farming-plan/toggle-task
+ * Toggle completion of a task on a plan by plan id or crop.
+ */
+router.post("/farming-plan/toggle-task", async (req, res) => {
+  const { id, userKey = "default", crop, taskId, completed } = req.body;
+  if (!taskId) {
+    res.status(400).json({ error: "taskId is required" });
+    return;
+  }
+
+  try {
+    const plans = await getUserPlans(userKey);
+    let targetPlan = id ? plans.find(p => p.id === id) : null;
+
+    if (!targetPlan && crop) {
+      targetPlan = plans.find(p => p.crop.toLowerCase() === crop.toLowerCase());
+    }
+
+    if (targetPlan) {
+      targetPlan.completedTasks = targetPlan.completedTasks || {};
+      targetPlan.completedTasks[taskId] = !!completed;
+      targetPlan.updatedAt = new Date().toISOString();
+      await saveUserPlanRecord(targetPlan);
+      res.json({ success: true, planId: targetPlan.id, taskId, completed: !!completed, completedTasks: targetPlan.completedTasks });
+      return;
+    }
+
+    res.status(404).json({ error: "Plan not found to toggle task" });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to toggle task" });
+  }
+});
+
+/**
+ * POST /api/farming-plan/complete-day
+ * Mark all tasks for a specific date as complete and save day completion status.
+ */
+router.post("/farming-plan/complete-day", async (req, res) => {
+  const { id, userKey = "default", crop, dateStr, taskIds = [], completed = true } = req.body;
+  if (!dateStr) {
+    res.status(400).json({ error: "dateStr is required" });
+    return;
+  }
+
+  try {
+    const plans = await getUserPlans(userKey);
+    let targetPlan = id ? plans.find(p => p.id === id) : null;
+
+    if (!targetPlan && crop) {
+      targetPlan = plans.find(p => p.crop.toLowerCase() === crop.toLowerCase());
+    }
+
+    if (targetPlan) {
+      targetPlan.completedTasks = targetPlan.completedTasks || {};
+      targetPlan.completedTasks[`day_${dateStr}`] = !!completed;
+      if (Array.isArray(taskIds)) {
+        taskIds.forEach((tId: string) => {
+          targetPlan!.completedTasks[tId] = !!completed;
+        });
+      }
+      targetPlan.updatedAt = new Date().toISOString();
+      await saveUserPlanRecord(targetPlan);
+      res.json({ success: true, planId: targetPlan.id, dateStr, completedTasks: targetPlan.completedTasks });
+      return;
+    }
+
+    res.status(404).json({ error: "Plan not found to complete day" });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to complete day" });
+  }
+});
+
+/**
+ * DELETE /api/farming-plan/delete/:id or POST /api/farming-plan/delete
+ */
+router.delete("/farming-plan/delete/:id", async (req, res) => {
+  const userKey = (req.query.userKey as string) || (req.body?.userKey as string) || "default";
+  const planId = req.params.id;
+  try {
+    await deleteUserPlanRecord(userKey, planId);
+    req.log.info({ userKey, planId }, "Deleted planting plan");
+    res.json({ success: true, deletedId: planId });
+  } catch (err: any) {
+    req.log.error({ err, planId }, "Error deleting planting plan");
+    res.status(500).json({ error: "Failed to delete plan" });
+  }
+});
+
+router.post("/farming-plan/delete", async (req, res) => {
+  const { id: planId, userKey = "default" } = req.body;
+  if (!planId) {
+    res.status(400).json({ error: "Plan ID is required" });
+    return;
+  }
+  try {
+    await deleteUserPlanRecord(userKey, planId);
+    req.log.info({ userKey, planId }, "Deleted planting plan");
+    res.json({ success: true, deletedId: planId });
+  } catch (err: any) {
+    req.log.error({ err, planId }, "Error deleting planting plan");
+    res.status(500).json({ error: "Failed to delete plan" });
+  }
+});
+
+/**
+ * POST /api/farming-plan/save-active (Backward Compatibility)
+ */
+router.post("/farming-plan/save-active", async (req, res) => {
+  const { userKey = "default", crop, plantingDate, name, plan, completedTasks } = req.body;
+  if (!crop || !plan) {
+    res.status(400).json({ error: "crop and plan are required" });
+    return;
+  }
+  const id = `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const planRecord: UserPlanRecord = {
+    id,
+    userKey,
+    name: name || `${crop} Plan`,
+    crop,
+    plantingDate,
+    status: "active",
+    plan,
+    completedTasks: completedTasks || {},
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await saveUserPlanRecord(planRecord);
+  res.json({ success: true, savedAt: planRecord.updatedAt, plan: planRecord });
+});
+
+/**
+ * POST /api/farming-plan/set-active
+ * Sets a specific plan as the designated main/active plan for this user.
+ */
+router.post("/farming-plan/set-active", async (req, res) => {
+  const { id, userKey = "default" } = req.body;
+  if (!id) {
+    res.status(400).json({ error: "Plan ID is required" });
+    return;
+  }
+  try {
+    const plans = await getUserPlans(userKey);
+    const target = plans.find(p => p.id === id);
+    if (!target) {
+      res.status(404).json({ error: "Plan not found" });
+      return;
+    }
+
+    target.status = "active";
+    target.updatedAt = new Date().toISOString();
+    await saveUserPlanRecord(target);
+
+    const mainPlanKey = `user_main_plan_id_${userKey}`;
+    await setCached(mainPlanKey, target.id, 365 * 24 * 60 * 60 * 1000);
+
+    req.log.info({ userKey, planId: id }, "Set user active/main planting plan");
+    res.json({ success: true, activePlan: target });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to set active plan" });
+  }
+});
+
+/**
+ * GET /api/farming-plan/get-active (Backward Compatibility and Dashboard Sync)
+ */
+router.get("/farming-plan/get-active", async (req, res) => {
+  const userKey = (req.query.userKey as string) || "default";
+  const crop = (req.query.crop as string) || "";
+  const plans = await getUserPlans(userKey);
+  if (!plans || plans.length === 0) {
+    res.json(null);
+    return;
+  }
+
+  if (crop) {
+    const match = plans.find(p => p.crop.toLowerCase() === crop.toLowerCase() && p.status === "active");
+    if (match) {
+      res.json({ crop: match.crop, plantingDate: match.plantingDate, plan: match.plan, completedTasks: match.completedTasks, updatedAt: match.updatedAt, id: match.id, name: match.name, status: match.status });
+      return;
+    }
+  }
+
+  // First check explicitly designated main plan ID
+  const mainPlanKey = `user_main_plan_id_${userKey}`;
+  const mainPlanId = await getCached<string>(mainPlanKey);
+  if (mainPlanId) {
+    const designated = plans.find(p => p.id === mainPlanId && p.status === "active");
+    if (designated) {
+      res.json({ crop: designated.crop, plantingDate: designated.plantingDate, plan: designated.plan, completedTasks: designated.completedTasks, updatedAt: designated.updatedAt, id: designated.id, name: designated.name, status: designated.status });
+      return;
+    }
+  }
+
+  // Next prioritize active plans, sorted by latest update
+  const activePlans = plans.filter(p => p.status === "active");
+  if (activePlans.length > 0) {
+    const latest = activePlans[0];
+    res.json({ crop: latest.crop, plantingDate: latest.plantingDate, plan: latest.plan, completedTasks: latest.completedTasks, updatedAt: latest.updatedAt, id: latest.id, name: latest.name, status: latest.status });
+    return;
+  }
+
+  // If no plans have active status, user has no active plan
+  res.json(null);
 });
 
 /**

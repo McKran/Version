@@ -5,7 +5,16 @@ import { type Language, type Translations, getTranslation } from "@/lib/i18n";
 
 export type { WeightUnit, TargetMarket, Language, Translations };
 
+export interface MarketplaceAddress {
+  region: string;
+  province: string;
+  municipality: string;
+  barangay: string;
+  streetAddress: string;
+}
+
 export interface AppSettings {
+  userName: string;
   onboardingCompleted: boolean;
   language: Language;
   countryCode: string;
@@ -23,9 +32,13 @@ export interface AppSettings {
   preferredCropIds: number[];
   targetMarket: TargetMarket;
   theme: "light" | "dark" | "system";
+  activeSection?: "market" | "farmer";
+  savedSellerAddress?: MarketplaceAddress;
+  savedBuyerAddress?: MarketplaceAddress;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
+  userName: "",
   onboardingCompleted: false,
   language: "en",
   countryCode: "PH",
@@ -43,6 +56,20 @@ const DEFAULT_SETTINGS: AppSettings = {
   preferredCropIds: [],
   targetMarket: "local",
   theme: "light",
+  savedSellerAddress: {
+    region: "Davao Region",
+    province: "Davao Oriental",
+    municipality: "Mati City",
+    barangay: "Central",
+    streetAddress: "Purok 4, Upper Farm Road",
+  },
+  savedBuyerAddress: {
+    region: "Davao Region",
+    province: "Davao Oriental",
+    municipality: "Mati City",
+    barangay: "Central",
+    streetAddress: "J.C. Aquino Ave, Commercial Center",
+  },
 };
 
 const STORAGE_KEY = "agri_settings_v7";
@@ -83,6 +110,8 @@ function saveSettings(settings: AppSettings) {
 interface SettingsContextType {
   settings: AppSettings;
   t: Translations;
+  activeSection: "market" | "farmer";
+  setActiveSection: (sec: "market" | "farmer") => void;
   updateSettings: (partial: Partial<AppSettings>) => void;
   completeOnboarding: (data: Partial<AppSettings>) => void;
   resetOnboarding: () => void;
@@ -98,6 +127,14 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
 
+  const defaultSection: "market" | "farmer" =
+    (settings.preferredCrops && settings.preferredCrops.length > 0) ||
+    (settings.preferredCropIds && settings.preferredCropIds.length > 0)
+      ? "farmer"
+      : "market";
+
+  const activeSection: "market" | "farmer" = settings.activeSection || defaultSection;
+
   useEffect(() => {
     applyTheme(settings.theme);
   }, [settings.theme]);
@@ -111,6 +148,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (partial.theme) applyTheme(partial.theme);
       return next;
     });
+  };
+
+  const setActiveSection = (section: "market" | "farmer") => {
+    updateSettings({ activeSection: section });
   };
 
   const setLanguage = (lang: Language) => {
@@ -158,10 +199,25 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const fullLocationLabel = parts.join(", ");
 
   return (
-    <SettingsContext.Provider value={{ settings, t, updateSettings, completeOnboarding, resetOnboarding, formatPrice, currencySymbol, unitLabel, fullLocationLabel, setLanguage }}>
+    <SettingsContext.Provider value={{ settings, t, activeSection, setActiveSection, updateSettings, completeOnboarding, resetOnboarding, formatPrice, currencySymbol, unitLabel, fullLocationLabel, setLanguage }}>
       {children}
     </SettingsContext.Provider>
   );
+}
+
+export function getUserKey(userName?: string): string {
+  if (userName && userName.trim()) {
+    return `user_${userName.trim().toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+  }
+  if (typeof window !== "undefined") {
+    let stored = localStorage.getItem("agri_user_key");
+    if (!stored) {
+      stored = `user_${Math.random().toString(36).substring(2, 9)}`;
+      localStorage.setItem("agri_user_key", stored);
+    }
+    return stored;
+  }
+  return "user_default";
 }
 
 export function useSettings() {

@@ -14,8 +14,10 @@ export interface MarketplaceListingData {
   sellerPhone: string;
   sellerFarmName?: string;
   sellerRating: number;
+  sellerReviewCount?: number;
   verificationStatus: "Verified Farmer" | "DA Co-op Member" | "Premium Seller" | "Unverified";
   cropName: string;
+  cropImageUrl: string; // Standard plant/crop identification image
   variety: string;
   category: string;
   quantityAvailableKg: number;
@@ -32,6 +34,7 @@ export interface MarketplaceListingData {
   province: string;
   municipality: string;
   barangay?: string;
+  streetAddress?: string;
   latitude: number;
   longitude: number;
   deliveryOptions: string[]; // ["Farm Gate Pickup", "Local Delivery", "Regional Trucking"]
@@ -50,6 +53,8 @@ export interface MarketplaceOrderData {
   buyerName: string;
   buyerContact: string;
   buyerLocation: string;
+  buyerBarangay?: string;
+  buyerStreetAddress?: string;
   cropName: string;
   variety: string;
   quantityKg: number;
@@ -90,6 +95,87 @@ export interface MarketplaceOfferData {
   status: "Pending" | "Accepted" | "Rejected" | "Expired";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MarketplaceReviewData {
+  id: string;
+  reviewId: string;
+  orderId: string;
+  listingId: string;
+  sellerId: string;
+  sellerName: string;
+  buyerName: string;
+  cropName: string;
+  variety: string;
+  rating: number; // 1 to 5 stars
+  productQualityRating?: number;
+  sellerExperienceRating?: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Standard Crop Identification Image Mapping
+ * Deterministically returns the standard plant/crop identification image based on the selected crop.
+ */
+export function getCropStandardImage(cropName: string): string {
+  const name = (cropName || "").toLowerCase().trim();
+  if (name.includes("rice") || name.includes("palay") || name.includes("dinorado") || name.includes("sinandomeng") || name.includes("jasmin")) {
+    return "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("corn") || name.includes("mais")) {
+    return "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("tomato") || name.includes("kamatis")) {
+    return "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("cabbage") || name.includes("repolyo")) {
+    return "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("onion") || name.includes("sibuyas")) {
+    return "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cf?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("mango") || name.includes("mangga")) {
+    return "https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("banana") || name.includes("saging")) {
+    return "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("eggplant") || name.includes("talong")) {
+    return "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("potato") || name.includes("patatas")) {
+    return "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("garlic") || name.includes("bawang")) {
+    return "https://images.unsplash.com/photo-1540148426945-6cf22a6b2383?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("carrot") || name.includes("karot")) {
+    return "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("pineapple") || name.includes("pinya")) {
+    return "https://images.unsplash.com/photo-1550258987-190a2d41a8ba?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("coconut") || name.includes("niyog")) {
+    return "https://images.unsplash.com/photo-1543362906-acfc16c67564?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("coffee") || name.includes("kape")) {
+    return "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("chili") || name.includes("sili")) {
+    return "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("squash") || name.includes("kalabasa") || name.includes("pumpkin")) {
+    return "https://images.unsplash.com/photo-1570586437263-ab629fccc818?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("peanut") || name.includes("mani")) {
+    return "https://images.unsplash.com/photo-1567892336306-037041793739?auto=format&fit=crop&w=800&q=80";
+  }
+  if (name.includes("papaya")) {
+    return "https://images.unsplash.com/photo-1617112848923-cc22343f1a72?auto=format&fit=crop&w=800&q=80";
+  }
+  return "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=800&q=80";
 }
 
 // Coordinate mapping for Philippine Municipalities/Provinces for Distance Approximation
@@ -145,293 +231,18 @@ export function getApproxDistanceToBuyer(
   return calculateDistanceKm(listing.latitude, listing.longitude, buyerCoords.lat, buyerCoords.lng);
 }
 
-// In-memory data store with realistic initial Philippine farmer listings
+// In-memory data store for real authenticated marketplace listings
 const listingsStore: Map<string, MarketplaceListingData> = new Map();
 const ordersStore: Map<string, MarketplaceOrderData> = new Map();
 const offersStore: Map<string, MarketplaceOfferData> = new Map();
+const reviewsStore: Map<string, MarketplaceReviewData> = new Map();
 const favoritesStore: Set<string> = new Set(); // store favorite listingIds
-
-/**
- * Seed initial marketplace listings tied to authoritative DA reference prices
- */
-function seedMarketplaceListings() {
-  // Production Marketplace: No fake or synthetic sellers/listings.
-  // Only real user-created active listings will be displayed.
-  return;
-  if (listingsStore.size > 0) return;
-
-  const today = new Date().toISOString().split("T")[0];
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-
-  const seeds = [
-    {
-      id: "mkt_1",
-      listingId: "LST-1001",
-      sellerId: "SLR-101",
-      sellerName: "Mang Danilo Agripino",
-      sellerPhone: "+63 917 555 3821",
-      sellerFarmName: "Panabo Green Fields Farm",
-      sellerRating: 4.9,
-      verificationStatus: "Verified Farmer" as const,
-      cropName: "Rice",
-      variety: "Dinorado (Well-Milled)",
-      category: "Grains & Staples",
-      quantityAvailableKg: 850,
-      originalQuantityKg: 1000,
-      unit: "kg",
-      askingPricePhpKg: 48,
-      qualityGrade: "Grade A" as const,
-      harvestDate: today,
-      availableDate: today,
-      description: "Freshly harvested premium Dinorado well-milled rice. Aromatic, white grains with high head-rice yield. Direct from Panabo rice fields.",
-      region: "Region XI - Davao",
-      province: "Davao del Norte",
-      municipality: "Panabo City",
-      barangay: "Barangay New Visayas",
-      latitude: 7.3081,
-      longitude: 125.6841,
-      deliveryOptions: ["Farm Gate Pickup", "Local Delivery", "Regional Trucking"],
-      photoUrls: [
-        "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?auto=format&fit=crop&w=800&q=80",
-      ],
-      status: "active" as const,
-    },
-    {
-      id: "mkt_2",
-      listingId: "LST-1002",
-      sellerId: "SLR-102",
-      sellerName: "Benguet Highland Organic Co-op",
-      sellerPhone: "+63 920 888 1920",
-      sellerFarmName: "La Trinidad Valley Organics",
-      sellerRating: 4.95,
-      verificationStatus: "DA Co-op Member" as const,
-      cropName: "Cabbage",
-      variety: "Kyoto Highland Cabbage",
-      category: "Vegetables",
-      quantityAvailableKg: 1200,
-      originalQuantityKg: 1200,
-      unit: "kg",
-      askingPricePhpKg: 70,
-      qualityGrade: "Export Quality" as const,
-      harvestDate: today,
-      availableDate: today,
-      description: "Crisp and heavy highland Kyoto heads grown organically in La Trinidad Valley. Ideal for trading posts and institutional buyers.",
-      region: "CAR",
-      province: "Benguet",
-      municipality: "La Trinidad",
-      barangay: "Barangay Puguis",
-      latitude: 16.4550,
-      longitude: 120.5875,
-      deliveryOptions: ["Farm Gate Pickup", "Regional Trucking"],
-      photoUrls: [
-        "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&w=800&q=80",
-      ],
-      status: "active" as const,
-    },
-    {
-      id: "mkt_3",
-      listingId: "LST-1003",
-      sellerId: "SLR-103",
-      sellerName: "Aling Teresa Ramos",
-      sellerPhone: "+63 908 123 4567",
-      sellerFarmName: "Central Luzon Bulb Growers",
-      sellerRating: 4.7,
-      verificationStatus: "Verified Farmer" as const,
-      cropName: "Onion",
-      variety: "Red Pinoy (Red Bulb)",
-      category: "Vegetables",
-      quantityAvailableKg: 500,
-      originalQuantityKg: 600,
-      unit: "kg",
-      askingPricePhpKg: 115,
-      qualityGrade: "Grade A" as const,
-      harvestDate: today,
-      availableDate: today,
-      description: "Dry, sun-cured Red Pinoy onions. Pungent aroma, firm skin, long shelf life.",
-      region: "Region III - Central Luzon",
-      province: "Nueva Ecija",
-      municipality: "Cabanatuan City",
-      barangay: "Barangay Valdefuente",
-      latitude: 15.4865,
-      longitude: 120.9734,
-      deliveryOptions: ["Farm Gate Pickup", "Local Delivery"],
-      photoUrls: [
-        "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cf?auto=format&fit=crop&w=800&q=80",
-      ],
-      status: "active" as const,
-    },
-    {
-      id: "mkt_4",
-      listingId: "LST-1004",
-      sellerId: "SLR-104",
-      sellerName: "Davao Fruit Valley Agri",
-      sellerPhone: "+63 928 444 9876",
-      sellerFarmName: "Davao Mango Orchards",
-      sellerRating: 4.85,
-      verificationStatus: "Premium Seller" as const,
-      cropName: "Mango",
-      variety: "Carabao Sweet Mango",
-      category: "Fruits",
-      quantityAvailableKg: 750,
-      originalQuantityKg: 750,
-      unit: "kg",
-      askingPricePhpKg: 112,
-      qualityGrade: "Grade A" as const,
-      harvestDate: tomorrow,
-      availableDate: tomorrow,
-      description: "Naturally ripened Davao Carabao mangoes. High Brix sweetness, smooth fiberless texture.",
-      region: "Region XI - Davao",
-      province: "Davao del Sur",
-      municipality: "Davao City",
-      barangay: "Calinan",
-      latitude: 7.1907,
-      longitude: 125.4553,
-      deliveryOptions: ["Farm Gate Pickup", "Local Delivery", "Air Freight"],
-      photoUrls: [
-        "https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=800&q=80",
-      ],
-      status: "active" as const,
-    },
-    {
-      id: "mkt_5",
-      listingId: "LST-1005",
-      sellerId: "SLR-105",
-      sellerName: "Noli & Family Farms",
-      sellerPhone: "+63 919 777 2233",
-      sellerFarmName: "Agusan Agri Cooperative",
-      sellerRating: 4.8,
-      verificationStatus: "DA Co-op Member" as const,
-      cropName: "Tomato",
-      variety: "Diamante Max Tomatoes",
-      category: "Vegetables",
-      quantityAvailableKg: 350,
-      originalQuantityKg: 400,
-      unit: "kg",
-      askingPricePhpKg: 60,
-      qualityGrade: "Grade A" as const,
-      harvestDate: today,
-      availableDate: today,
-      description: "Firm, thick-skinned Diamante Max tomatoes. Excellent red color and extended transit durability.",
-      region: "Region XIII - CARAGA",
-      province: "Agusan del Norte",
-      municipality: "Cabadbaran City",
-      barangay: "Barangay Bay-ang",
-      latitude: 9.1233,
-      longitude: 125.5342,
-      deliveryOptions: ["Farm Gate Pickup", "Local Delivery"],
-      photoUrls: [
-        "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80",
-      ],
-      status: "active" as const,
-    },
-    {
-      id: "mkt_6",
-      listingId: "LST-1006",
-      sellerId: "SLR-106",
-      sellerName: "Bukidnon Grain Traders",
-      sellerPhone: "+63 922 999 1122",
-      sellerFarmName: "Bukidnon High Plains Corn Farm",
-      sellerRating: 4.92,
-      verificationStatus: "Verified Farmer" as const,
-      cropName: "Corn – Yellow",
-      variety: "Pioneer Hybrid Yellow Corn",
-      category: "Grains & Staples",
-      quantityAvailableKg: 2000,
-      originalQuantityKg: 2000,
-      unit: "kg",
-      askingPricePhpKg: 30,
-      qualityGrade: "Grade A" as const,
-      harvestDate: today,
-      availableDate: today,
-      description: "Low moisture content (14% MC) yellow corn grain. High kernel weight, ideal for feed mills or grain traders.",
-      region: "Region X - Northern Mindanao",
-      province: "Bukidnon",
-      municipality: "Malaybalay City",
-      barangay: "Barangay Casisang",
-      latitude: 8.1575,
-      longitude: 125.1278,
-      deliveryOptions: ["Farm Gate Pickup", "Regional Trucking"],
-      photoUrls: [
-        "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80",
-      ],
-      status: "active" as const,
-    },
-  ];
-
-  for (const item of seeds) {
-    // Calculate DA Reference price dynamically for the listing location
-    const daStats = calculatePriceStatistics(item.cropName, item.region);
-    const daRef = daStats.currentPrice > 0 ? daStats.currentPrice : item.askingPricePhpKg;
-    const diffPct = Math.round(((item.askingPricePhpKg - daRef) / daRef) * 1000) / 10;
-
-    const fullListing: MarketplaceListingData = {
-      ...item,
-      daReferencePricePhpKg: daRef,
-      priceDifferencePct: diffPct,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    listingsStore.set(fullListing.listingId, fullListing);
-  }
-
-  if (ordersStore.size === 0) {
-    const sampleOrders: MarketplaceOrderData[] = [
-      {
-        id: "ord_101",
-        orderId: "ORD-2026-001",
-        listingId: "LST-1001",
-        sellerId: "SLR-101",
-        sellerName: "Mang Danilo Agripino",
-        buyerName: "Juan Dela Cruz",
-        buyerContact: "+63 917 111 2233",
-        buyerLocation: "Butuan City, Agusan del Norte",
-        cropName: "Rice",
-        variety: "Dinorado (Well-Milled)",
-        quantityKg: 150,
-        agreedPricePhpKg: 48,
-        totalAmountPhp: 7200,
-        deliveryMethod: "Local Delivery",
-        status: "In delivery",
-        orderType: "direct_buy",
-        createdAt: new Date(Date.now() - 172800000).toISOString(),
-        updatedAt: new Date(Date.now() - 86400000).toISOString(),
-      },
-      {
-        id: "ord_102",
-        orderId: "ORD-2026-002",
-        listingId: "LST-1005",
-        sellerId: "SLR-105",
-        sellerName: "Noli & Family Farms",
-        buyerName: "Juan Dela Cruz",
-        buyerContact: "+63 917 111 2233",
-        buyerLocation: "Butuan City, Agusan del Norte",
-        cropName: "Tomato",
-        variety: "Diamante Max Tomatoes",
-        quantityKg: 50,
-        agreedPricePhpKg: 60,
-        totalAmountPhp: 3000,
-        deliveryMethod: "Farm Gate Pickup",
-        status: "Confirmed",
-        orderType: "direct_buy",
-        createdAt: new Date(Date.now() - 86400000).toISOString(),
-        updatedAt: new Date(Date.now() - 43200000).toISOString(),
-      },
-    ];
-    for (const ord of sampleOrders) {
-      ordersStore.set(ord.orderId, ord);
-    }
-  }
-}
-
-// Seed upon module load if enabled
-seedMarketplaceListings();
 
 /**
  * Get active marketplace listings with rich filtering, search, sorting, and distance calculation
  */
 export function getMarketplaceListings(params: {
+  sellerId?: string;
   cropName?: string;
   variety?: string;
   category?: string;
@@ -446,16 +257,27 @@ export function getMarketplaceListings(params: {
   search?: string;
   sortBy?: "newest" | "price_asc" | "price_desc" | "distance" | "quantity";
 }): (MarketplaceListingData & { distanceKm: number })[] {
-  seedMarketplaceListings();
-
   let results: (MarketplaceListingData & { distanceKm: number })[] = [];
 
-  const buyerLoc = params.buyerLocation || "Butuan City, Agusan del Norte";
+  const buyerLoc = params.buyerLocation || "Davao Oriental";
 
   for (const listing of listingsStore.values()) {
     if (listing.status !== "active") continue;
 
+    // Ensure cropImageUrl matches standard crop image
+    listing.cropImageUrl = getCropStandardImage(listing.cropName);
+
+    // Sync rating summary from reviews
+    const summary = getSellerRatingSummary(listing.sellerId);
+    if (summary.totalReviews > 0) {
+      listing.sellerRating = summary.averageRating;
+      listing.sellerReviewCount = summary.totalReviews;
+    } else {
+      listing.sellerReviewCount = 0;
+    }
+
     // Filters
+    if (params.sellerId && params.sellerId !== "all" && listing.sellerId !== params.sellerId) continue;
     if (params.cropName && !listing.cropName.toLowerCase().includes(params.cropName.toLowerCase())) continue;
     if (params.category && params.category !== "all" && listing.category.toLowerCase() !== params.category.toLowerCase()) continue;
     if (params.variety && !listing.variety.toLowerCase().includes(params.variety.toLowerCase())) continue;
@@ -507,18 +329,26 @@ export function getMarketplaceListingById(
   listingId: string,
   buyerLocation?: string
 ): (MarketplaceListingData & { distanceKm: number }) | null {
-  seedMarketplaceListings();
-
   const listing = listingsStore.get(listingId);
   if (!listing) return null;
 
-  // Refresh DA price
+  // Refresh DA price & crop image
   const daStats = calculatePriceStatistics(listing.cropName, listing.region);
   const daRef = daStats.currentPrice > 0 ? daStats.currentPrice : listing.askingPricePhpKg;
   const diffPct = Math.round(((listing.askingPricePhpKg - daRef) / daRef) * 1000) / 10;
 
   listing.daReferencePricePhpKg = daRef;
   listing.priceDifferencePct = diffPct;
+  listing.cropImageUrl = getCropStandardImage(listing.cropName);
+
+  // Sync rating summary
+  const summary = getSellerRatingSummary(listing.sellerId);
+  if (summary.totalReviews > 0) {
+    listing.sellerRating = summary.averageRating;
+    listing.sellerReviewCount = summary.totalReviews;
+  } else {
+    listing.sellerReviewCount = 0;
+  }
 
   const dist = getApproxDistanceToBuyer(listing, buyerLocation || "Butuan City, Agusan del Norte");
 
@@ -550,6 +380,7 @@ export function createMarketplaceListing(data: {
   province: string;
   municipality: string;
   barangay?: string;
+  streetAddress?: string;
   latitude?: number;
   longitude?: number;
   deliveryOptions?: string[];
@@ -586,6 +417,7 @@ export function createMarketplaceListing(data: {
     sellerRating: 5.0,
     verificationStatus: "Verified Farmer",
     cropName: data.cropName,
+    cropImageUrl: getCropStandardImage(data.cropName),
     variety: data.variety || "Standard Variety",
     category: data.category || "Vegetables",
     quantityAvailableKg: data.quantityAvailableKg,
@@ -602,10 +434,11 @@ export function createMarketplaceListing(data: {
     province: data.province,
     municipality: data.municipality,
     barangay: data.barangay || "",
+    streetAddress: data.streetAddress || "",
     latitude: coords.lat,
     longitude: coords.lng,
     deliveryOptions: data.deliveryOptions || ["Farm Gate Pickup", "Local Delivery"],
-    photoUrls: data.photoUrls || ["https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80"],
+    photoUrls: data.photoUrls || [],
     status: "active",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -650,6 +483,13 @@ export function updateMarketplaceListing(
 
   listingsStore.set(listingId, updated);
   return updated;
+}
+
+/**
+ * Delete / Remove a marketplace listing
+ */
+export function deleteMarketplaceListing(listingId: string): boolean {
+  return listingsStore.delete(listingId);
 }
 
 /**
@@ -817,6 +657,8 @@ export function createDirectOrder(data: {
   buyerName: string;
   buyerContact: string;
   buyerLocation: string;
+  buyerBarangay?: string;
+  buyerStreetAddress?: string;
   quantityKg: number;
   deliveryMethod?: string;
 }): { order: MarketplaceOrderData; listing: MarketplaceListingData } {
@@ -858,6 +700,8 @@ export function createDirectOrder(data: {
     buyerName: data.buyerName,
     buyerContact: data.buyerContact,
     buyerLocation: data.buyerLocation,
+    buyerBarangay: data.buyerBarangay || "",
+    buyerStreetAddress: data.buyerStreetAddress || "",
     cropName: listing.cropName,
     variety: listing.variety,
     quantityKg: data.quantityKg,
@@ -936,8 +780,6 @@ export function getOffers(params: { sellerId?: string; listingId?: string; buyer
  * Farmer Dashboard Analytics
  */
 export function getFarmerDashboardData(sellerId: string = "all") {
-  seedMarketplaceListings();
-
   const farmerListings: MarketplaceListingData[] = [];
   for (const lst of listingsStore.values()) {
     if (lst.sellerId === sellerId || sellerId === "all") {
@@ -990,8 +832,6 @@ export function getFarmerDashboardData(sellerId: string = "all") {
  * Buyer Dashboard Analytics
  */
 export function getBuyerDashboardData(buyerName: string = "Valued Buyer") {
-  seedMarketplaceListings();
-
   const buyerOrders = getOrders({ buyerName });
   const buyerOffers = getOffers({ buyerName });
 
@@ -1035,4 +875,137 @@ export function toggleFavorite(listingId: string): boolean {
 
 export function isFavorite(listingId: string): boolean {
   return favoritesStore.has(listingId);
+}
+
+/**
+ * REVIEWS & RATINGS ENGINE
+ */
+
+export function createOrUpdateReview(data: {
+  orderId: string;
+  buyerName: string;
+  rating: number;
+  productQualityRating?: number;
+  sellerExperienceRating?: number;
+  comment: string;
+}): MarketplaceReviewData {
+  const order = ordersStore.get(data.orderId);
+  if (!order) {
+    throw new Error("Order not found. You can only review verified completed purchases.");
+  }
+
+  // Validate buyer name matches order buyer
+  if (data.buyerName && order.buyerName.trim().toLowerCase() !== data.buyerName.trim().toLowerCase()) {
+    throw new Error("You can only submit reviews for orders that you purchased.");
+  }
+
+  // Valid order status for review
+  const validReviewStatuses = ["Completed", "Confirmed", "In delivery", "Preparing", "Ready for pickup"];
+  if (!validReviewStatuses.includes(order.status)) {
+    throw new Error(`Cannot review order with status "${order.status}". Only verified purchased orders can be reviewed.`);
+  }
+
+  if (data.rating < 1 || data.rating > 5) {
+    throw new Error("Rating must be between 1 and 5 stars.");
+  }
+
+  // Check if review already exists for this orderId
+  let existingReview: MarketplaceReviewData | undefined;
+  for (const rev of reviewsStore.values()) {
+    if (rev.orderId === data.orderId) {
+      existingReview = rev;
+      break;
+    }
+  }
+
+  const now = new Date().toISOString();
+  let review: MarketplaceReviewData;
+
+  if (existingReview) {
+    review = {
+      ...existingReview,
+      rating: data.rating,
+      productQualityRating: data.productQualityRating || data.rating,
+      sellerExperienceRating: data.sellerExperienceRating || data.rating,
+      comment: data.comment,
+      updatedAt: now,
+    };
+  } else {
+    const reviewId = `REV-${1000 + reviewsStore.size + 1}`;
+    review = {
+      id: `rev_${Date.now()}`,
+      reviewId,
+      orderId: order.orderId,
+      listingId: order.listingId,
+      sellerId: order.sellerId,
+      sellerName: order.sellerName,
+      buyerName: order.buyerName,
+      cropName: order.cropName,
+      variety: order.variety || "",
+      rating: data.rating,
+      productQualityRating: data.productQualityRating || data.rating,
+      sellerExperienceRating: data.sellerExperienceRating || data.rating,
+      comment: data.comment,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  reviewsStore.set(review.reviewId, review);
+
+  // Recalculate seller rating across all listings
+  updateSellerRatingFromReviews(order.sellerId);
+
+  return review;
+}
+
+export function updateSellerRatingFromReviews(sellerId: string): number {
+  const sellerReviews: MarketplaceReviewData[] = [];
+  for (const r of reviewsStore.values()) {
+    if (r.sellerId === sellerId) {
+      sellerReviews.push(r);
+    }
+  }
+
+  if (sellerReviews.length === 0) return 0;
+
+  const total = sellerReviews.reduce((sum, r) => sum + r.rating, 0);
+  const avg = Math.round((total / sellerReviews.length) * 10) / 10;
+
+  // Update sellerRating and sellerReviewCount on all active listings of this seller
+  for (const listing of listingsStore.values()) {
+    if (listing.sellerId === sellerId) {
+      listing.sellerRating = avg;
+      listing.sellerReviewCount = sellerReviews.length;
+    }
+  }
+
+  return avg;
+}
+
+export function getReviews(params: {
+  sellerId?: string;
+  listingId?: string;
+  orderId?: string;
+  buyerName?: string;
+}): MarketplaceReviewData[] {
+  const results: MarketplaceReviewData[] = [];
+  for (const r of reviewsStore.values()) {
+    if (params.sellerId && params.sellerId !== "all" && r.sellerId !== params.sellerId) continue;
+    if (params.listingId && r.listingId !== params.listingId) continue;
+    if (params.orderId && r.orderId !== params.orderId) continue;
+    if (params.buyerName && params.buyerName !== "all" && r.buyerName.toLowerCase() !== params.buyerName.toLowerCase()) continue;
+    results.push(r);
+  }
+  return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export function getSellerRatingSummary(sellerId: string): { averageRating: number; totalReviews: number; reviews: MarketplaceReviewData[] } {
+  const reviews = getReviews({ sellerId });
+  if (reviews.length === 0) {
+    return { averageRating: 0, totalReviews: 0, reviews: [] };
+  }
+  const total = reviews.reduce((sum, r) => sum + r.rating, 0);
+  const averageRating = Math.round((total / reviews.length) * 10) / 10;
+  return { averageRating, totalReviews: reviews.length, reviews };
 }

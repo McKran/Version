@@ -1,4 +1,4 @@
-import { Moon, Sun, Monitor, MapPin, Globe, Scale, Database, ChevronRight, RefreshCw, ShoppingCart, ClipboardList } from "lucide-react";
+import { Moon, Sun, Monitor, MapPin, Globe, Scale, Database, ChevronRight, RefreshCw, ShoppingCart, ClipboardList, Store, Truck } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useLocationStore } from "@/hooks/use-location";
 import { Input } from "@/components/ui/input";
@@ -100,6 +100,22 @@ export default function Settings() {
         </p>
       </div>
 
+      <SettingsGroup title={isFil ? "Profil ng Gumagamit" : "User Profile"}>
+        <SettingsRow
+          icon={Globe}
+          label={isFil ? "Pangalan Mo" : "Your Name"}
+          description={isFil ? "Gagamitin sa buong app para sa pagbati" : "Displayed throughout the app and greetings"}
+          control={
+            <Input
+              value={settings.userName ?? ""}
+              onChange={(e) => updateSettings({ userName: e.target.value })}
+              className="h-8 w-44 text-right border-transparent bg-muted/50 focus-visible:bg-background text-sm font-medium"
+              placeholder={isFil ? "Ilagay ang pangalan..." : "Enter name..."}
+            />
+          }
+        />
+      </SettingsGroup>
+
       <SettingsGroup title={isFil ? "Wika (Language)" : "Language"}>
         <SettingsRow
           icon={Globe}
@@ -122,8 +138,12 @@ export default function Settings() {
       <SettingsGroup title={isFil ? "Hitsura" : "Appearance"}>
         <SettingsRow
           icon={isDark ? Moon : Sun}
-          label="Dark Mode"
-          description={isDark ? "Dark theme active" : "Default light theme active. Switch on to enable dark mode."}
+          label={isFil ? "Madilim na Tema (Dark Mode)" : "Dark Mode"}
+          description={
+            isDark
+              ? (isFil ? "Aktibo ang madilim na tema" : "Dark theme active")
+              : (isFil ? "Aktibo ang maliwanag na tema. Buksan upang i-enable ang dark mode." : "Default light theme active. Switch on to enable dark mode.")
+          }
           control={
             <Switch
               checked={isDark}
@@ -133,17 +153,17 @@ export default function Settings() {
         />
         <SettingsRow
           icon={Monitor}
-          label="Theme Mode"
-          description="Choose preferred theme mode"
+          label={isFil ? "Tema ng Kulay" : "Theme Mode"}
+          description={isFil ? "Pumili ng gustong hitsura ng tema" : "Choose preferred theme mode"}
           control={
             <Select value={settings.theme} onValueChange={(v: any) => updateSettings({ theme: v })}>
               <SelectTrigger className="w-[120px] h-8 border-transparent bg-muted/50">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="light">Light Mode</SelectItem>
-                <SelectItem value="dark">Dark Mode</SelectItem>
-                <SelectItem value="system">System</SelectItem>
+                <SelectItem value="light">{isFil ? "Maliwanag" : "Light Mode"}</SelectItem>
+                <SelectItem value="dark">{isFil ? "Madilim" : "Dark Mode"}</SelectItem>
+                <SelectItem value="system">{isFil ? "Sistema" : "System"}</SelectItem>
               </SelectContent>
             </Select>
           }
@@ -266,6 +286,260 @@ export default function Settings() {
         />
       </SettingsGroup>
 
+      <SettingsGroup title={isFil ? "Mga Anino sa Marketplace (Grownox Addresses)" : "Grownox Marketplace Addresses"}>
+        <div className="p-4 space-y-4">
+          {/* Farmer / Seller Address */}
+          <div className="space-y-2 border-b border-border/50 pb-4">
+            <div className="flex items-center gap-2">
+              <Store className="h-4 w-4 text-amber-600" />
+              <h3 className="font-bold text-sm text-foreground">
+                {isFil ? "Anino ng Magsasaka (Seller Address)" : "Farmer / Seller Default Address"}
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isFil ? "Gagamiting default sa pagpo-post ng mga pananim sa Grownox Marketplace" : "Used as default location when creating crop listings"}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">{isFil ? "Rehiyon" : "Region"}</label>
+                <Input
+                  value={settings.savedSellerAddress?.region || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedSellerAddress: {
+                        ...(settings.savedSellerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "Central",
+                          streetAddress: "",
+                        }),
+                        region: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Davao Region"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">{isFil ? "Lalawigan" : "Province"}</label>
+                <Input
+                  value={settings.savedSellerAddress?.province || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedSellerAddress: {
+                        ...(settings.savedSellerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "Central",
+                          streetAddress: "",
+                        }),
+                        province: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Davao Oriental"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">{isFil ? "Lungsod / Bayan" : "City / Municipality"}</label>
+                <Input
+                  value={settings.savedSellerAddress?.municipality || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedSellerAddress: {
+                        ...(settings.savedSellerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "Central",
+                          streetAddress: "",
+                        }),
+                        municipality: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Mati City"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">Barangay</label>
+                <Input
+                  value={settings.savedSellerAddress?.barangay || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedSellerAddress: {
+                        ...(settings.savedSellerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "",
+                          streetAddress: "",
+                        }),
+                        barangay: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Central"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">{isFil ? "Kalye / Tirahan" : "Street / Address"}</label>
+                <Input
+                  value={settings.savedSellerAddress?.streetAddress || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedSellerAddress: {
+                        ...(settings.savedSellerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "Central",
+                          streetAddress: "",
+                        }),
+                        streetAddress: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Example Street"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Buyer Delivery Address */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Truck className="h-4 w-4 text-emerald-600" />
+              <h3 className="font-bold text-sm text-foreground">
+                {isFil ? "Anino ng Mamimili (Buyer Delivery Address)" : "Buyer Saved Delivery Address"}
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isFil ? "Gagamitin sa mga order para sa mabilisang checkout" : "Saved delivery address used for quick checkout on orders"}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">{isFil ? "Rehiyon" : "Region"}</label>
+                <Input
+                  value={settings.savedBuyerAddress?.region || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedBuyerAddress: {
+                        ...(settings.savedBuyerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "Central",
+                          streetAddress: "",
+                        }),
+                        region: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Davao Region"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">{isFil ? "Lalawigan" : "Province"}</label>
+                <Input
+                  value={settings.savedBuyerAddress?.province || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedBuyerAddress: {
+                        ...(settings.savedBuyerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "Central",
+                          streetAddress: "",
+                        }),
+                        province: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Davao Oriental"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">{isFil ? "Lungsod / Bayan" : "City / Municipality"}</label>
+                <Input
+                  value={settings.savedBuyerAddress?.municipality || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedBuyerAddress: {
+                        ...(settings.savedBuyerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "Central",
+                          streetAddress: "",
+                        }),
+                        municipality: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Mati City or Butuan City"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">Barangay</label>
+                <Input
+                  value={settings.savedBuyerAddress?.barangay || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedBuyerAddress: {
+                        ...(settings.savedBuyerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "",
+                          streetAddress: "",
+                        }),
+                        barangay: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Central"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase">{isFil ? "Kalye / Tirahan" : "Street / Address"}</label>
+                <Input
+                  value={settings.savedBuyerAddress?.streetAddress || ""}
+                  onChange={(e) =>
+                    updateSettings({
+                      savedBuyerAddress: {
+                        ...(settings.savedBuyerAddress || {
+                          region: "Davao Region",
+                          province: "Davao Oriental",
+                          municipality: "Mati City",
+                          barangay: "Central",
+                          streetAddress: "",
+                        }),
+                        streetAddress: e.target.value,
+                      },
+                    })
+                  }
+                  className="h-8 text-xs bg-muted/30"
+                  placeholder="e.g. Example Street"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </SettingsGroup>
+
       <SettingsGroup title={isFil ? "Mga Nais na Pananim" : "Preferred Crops"}>
         <div className="p-4">
           {settings.preferredCrops.length === 0 ? (
@@ -284,30 +558,36 @@ export default function Settings() {
         </div>
       </SettingsGroup>
 
-      <SettingsGroup title="Farming Plan">
+      <SettingsGroup title={isFil ? "Plano sa Pagsasaka" : "Farming Plan"}>
         <SettingsRow
           icon={ClipboardList}
-          label="Plan Intelligence"
-          description="Powered by live Open-Meteo weather data and verified crop growth cycles"
+          label={isFil ? "Katalinuhan ng Plano" : "Plan Intelligence"}
+          description={
+            isFil
+              ? "Pinapagana ng live Open-Meteo datos ng panahon at beripikadong siklo ng paglaki ng pananim"
+              : "Powered by live Open-Meteo weather data and verified crop growth cycles"
+          }
           value={
             <Badge variant="secondary" className="bg-primary/10 text-primary text-xs">
-              Live Data
+              {isFil ? "Totoong Datos" : "Live Data"}
             </Badge>
           }
           control={<div />}
         />
         <SettingsRow
           icon={Database}
-          label="Data Refresh Interval"
-          value="Every 15 minutes"
+          label={isFil ? "Agwat ng Pag-refresh ng Datos" : "Data Refresh Interval"}
+          value={isFil ? "Bawat 15 minuto" : "Every 15 minutes"}
           control={<div />}
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Setup">
+      <SettingsGroup title={isFil ? "Pagsasaayos (Setup)" : "Setup"}>
         <div className="p-4">
           <p className="text-sm text-muted-foreground mb-3">
-            Re-run the onboarding wizard to reconfigure your country, crops, and market setup from scratch.
+            {isFil
+              ? "Patakbuhin muli ang setup wizard upang muling isaayos ang iyong bansa, pananim, at pamilihan."
+              : "Re-run the onboarding wizard to reconfigure your country, crops, and market setup from scratch."}
           </p>
           <Button
             variant="outline"
@@ -316,7 +596,7 @@ export default function Settings() {
             className="gap-2 text-primary border-primary/30 hover:bg-primary/5"
           >
             <RefreshCw className="h-4 w-4" />
-            Re-run Setup Wizard
+            {isFil ? "Patakbuhin Muli ang Setup Wizard" : "Re-run Setup Wizard"}
           </Button>
         </div>
       </SettingsGroup>

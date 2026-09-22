@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
+import { GrownoxIcon } from "@/components/grownox-icon";
 import {
   LayoutDashboard,
   CloudSun,
@@ -16,13 +17,23 @@ import {
   Video,
   Languages,
   Globe,
+  Compass,
+  LayoutGrid,
+  Zap,
 } from "lucide-react";
 import { useLocationStore } from "@/hooks/use-location";
 import { useSettings } from "@/hooks/use-settings";
 import { COUNTRIES } from "@/lib/country-data";
 import { Input } from "@/components/ui/input";
 
-export function isNavItemActive(href: string, currentPath: string, searchStr: string = ""): boolean {
+export function isNavItemActive(href: string, currentPath: string, activeSection: "market" | "farmer" = "farmer", searchStr: string = ""): boolean {
+  if (href === "/market-dashboard") {
+    return currentPath === "/market-dashboard" || (currentPath === "/" && activeSection === "market");
+  }
+  if (href === "/farmer-dashboard") {
+    return currentPath === "/farmer-dashboard" || (currentPath === "/" && activeSection === "farmer");
+  }
+
   const [itemPath, itemQuery] = href.split("?");
   const itemParams = new URLSearchParams(itemQuery || "");
   const itemTab = itemParams.get("tab");
@@ -53,10 +64,11 @@ export function isNavItemActive(href: string, currentPath: string, searchStr: st
 }
 
 function getActiveNavStyle(href: string): string {
-  if (href === "/") return "bg-emerald-800 text-white shadow-sm";
+  if (href === "/" || href === "/farmer-dashboard") return "bg-emerald-800 text-white shadow-sm";
+  if (href === "/market-dashboard") return "bg-amber-600 text-white shadow-sm";
   if (href.startsWith("/weather")) return "bg-blue-600 text-white shadow-sm";
   if (href.startsWith("/crops")) return "bg-emerald-600 text-white shadow-sm";
-  if (href.startsWith("/market") && !href.startsWith("/marketplace")) return "bg-emerald-700 text-white shadow-sm";
+  if (href.startsWith("/market") && !href.startsWith("/marketplace")) return "bg-blue-600 text-white shadow-sm";
   if (href.startsWith("/marketplace")) return "bg-gradient-to-r from-amber-600 to-rose-500 text-white shadow-sm";
   if (href.startsWith("/farming-plan")) return "bg-emerald-800 text-white shadow-sm";
   if (href.startsWith("/tutorials")) return "bg-rose-600 text-white shadow-sm";
@@ -78,30 +90,79 @@ function SidebarInner({
   locationPath: string;
   onNavClick?: () => void;
 }) {
-  const { t, settings, setLanguage } = useSettings();
+  const { t, settings, setLanguage, activeSection, setActiveSection } = useSettings();
+  const [, setLocationPath] = useLocation();
 
-  const navItems = [
-    { href: "/", icon: LayoutDashboard, label: t.dashboard },
-    { href: "/weather", icon: CloudSun, label: t.weather },
-    { href: "/crops", icon: Sprout, label: t.crops },
-    { href: "/market", icon: TrendingUp, label: t.market },
-    { href: "/marketplace", icon: Store, label: t.marketplace },
-    { href: "/farming-plan", icon: ClipboardList, label: t.farmingPlan },
-    { href: "/tutorials", icon: Video, label: t.tutorials },
-    { href: "/chat", icon: MessageSquare, label: t.chat },
-    { href: "/settings", icon: Settings, label: t.settings },
-  ];
+  const handleSectionSwitch = (sec: "market" | "farmer") => {
+    setActiveSection(sec);
+    if (sec === "market") {
+      if (["/chat", "/farming-plan", "/tutorials", "/crops", "/weather", "/farmer-dashboard"].includes(locationPath)) {
+        setLocationPath("/market-dashboard");
+      }
+    } else {
+      if (["/marketplace", "/market", "/market-dashboard"].includes(locationPath)) {
+        setLocationPath("/farmer-dashboard");
+      }
+    }
+  };
+
+  const navItems = activeSection === "market"
+    ? [
+        { href: "/market-dashboard", icon: LayoutDashboard, label: t.dashboard },
+        { href: "/marketplace", icon: Store, label: t.marketplace },
+        { href: "/market", icon: TrendingUp, label: t.market },
+        { href: "/settings", icon: Settings, label: t.settings },
+      ]
+    : [
+        { href: "/farmer-dashboard", icon: LayoutDashboard, label: t.dashboard },
+        { href: "/chat", icon: GrownoxIcon, label: t.chat },
+        { href: "/farming-plan", icon: ClipboardList, label: t.farmingPlan },
+        { href: "/tutorials", icon: Video, label: t.tutorials },
+        { href: "/crops", icon: Sprout, label: t.crops },
+        { href: "/weather", icon: CloudSun, label: t.weather },
+        { href: "/settings", icon: Settings, label: t.settings },
+      ];
 
   return (
     <>
-      <div className="p-6 border-b border-border/40">
+      <div className="p-5 border-b border-border/40 space-y-3">
         <div className="flex items-center gap-3 font-bold text-xl text-primary">
           <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
             <Sprout className="h-5 w-5 text-primary" />
           </div>
           <span>Grownox</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1.5">{t.smartFarmingPlatform}</p>
+        <p className="text-xs text-muted-foreground">{t.smartFarmingPlatform}</p>
+
+        {/* SECTION SWITCHER CONTROL */}
+        <div className="pt-1">
+          <div className="flex items-center bg-muted p-1 rounded-2xl border border-border/70 w-full text-xs font-extrabold">
+            <button
+              type="button"
+              onClick={() => handleSectionSwitch("market")}
+              className={`flex-1 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                activeSection === "market"
+                  ? "bg-[#2E7D32] text-white shadow-xs font-black"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Store className="h-3.5 w-3.5 shrink-0" />
+              <span>{t.marketNav}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSectionSwitch("farmer")}
+              className={`flex-1 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                activeSection === "farmer"
+                  ? "bg-emerald-600 text-white shadow-xs font-black"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Sprout className="h-3.5 w-3.5 shrink-0" />
+              <span>{t.farmerNav}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="px-4 py-3 border-b border-border/40 space-y-2">
@@ -111,7 +172,7 @@ function SidebarInner({
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             className="pl-8 bg-muted/50 border-transparent focus-visible:ring-primary focus-visible:bg-background h-9 rounded-xl text-sm"
-            placeholder="Your location..."
+            placeholder={t.locationPlaceholder}
           />
         </div>
 
@@ -148,8 +209,11 @@ function SidebarInner({
       </div>
 
       <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+        <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          {activeSection === "market" ? "Marketplace Navigation" : "Farmer Tools & Advisory"}
+        </div>
         {navItems.map((item) => {
-          const isActive = isNavItemActive(item.href, locationPath);
+          const isActive = isNavItemActive(item.href, locationPath, activeSection);
           const activeClass = getActiveNavStyle(item.href);
           return (
             <Link
@@ -175,12 +239,43 @@ function SidebarInner({
 export function Layout({ children }: { children: React.ReactNode }) {
   const [locationPath] = useLocation();
   const { location, setLocation } = useLocationStore();
-  const { settings, fullLocationLabel, t } = useSettings();
+  const { settings, fullLocationLabel, t, activeSection, setActiveSection } = useSettings();
+  const [, setLocationPath] = useLocation();
   const [fabOpen, setFabOpen] = useState(false);
   const fabRef = useRef<HTMLDivElement>(null);
 
   const selectedCountry = COUNTRIES.find((c) => c.code === settings.countryCode);
   const displayLocation = fullLocationLabel || location || selectedCountry?.name || "Location";
+
+  const handleMobileSectionSwitch = (sec: "market" | "farmer") => {
+    setActiveSection(sec);
+    if (sec === "market") {
+      if (["/chat", "/farming-plan", "/tutorials", "/crops", "/weather", "/farmer-dashboard"].includes(locationPath)) {
+        setLocationPath("/market-dashboard");
+      }
+    } else {
+      if (["/marketplace", "/market", "/market-dashboard"].includes(locationPath)) {
+        setLocationPath("/farmer-dashboard");
+      }
+    }
+  };
+
+  const mobileNavItems = activeSection === "market"
+    ? [
+        { href: "/market-dashboard", icon: LayoutDashboard, label: t.dashboard },
+        { href: "/marketplace", icon: Store, label: t.marketplace },
+        { href: "/market", icon: TrendingUp, label: t.market },
+        { href: "/settings", icon: Settings, label: t.settings },
+      ]
+    : [
+        { href: "/farmer-dashboard", icon: LayoutDashboard, label: t.dashboard },
+        { href: "/chat", icon: GrownoxIcon, label: t.chat },
+        { href: "/farming-plan", icon: ClipboardList, label: t.farmingPlan },
+        { href: "/tutorials", icon: Video, label: t.tutorials },
+        { href: "/crops", icon: Sprout, label: t.crops },
+        { href: "/weather", icon: CloudSun, label: t.weather },
+        { href: "/settings", icon: Settings, label: t.settings },
+      ];
 
   // Close FAB menu on tap outside
   useEffect(() => {
@@ -206,10 +301,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const marketModeLabel =
     settings.targetMarket === "international"
-      ? "Int'l Market"
+      ? t.intMarket
       : settings.targetMarket === "regional"
-      ? "Regional Market"
-      : "Local Market";
+      ? t.regionalMarket
+      : t.localMarket;
 
   return (
     <div className="flex h-[100dvh] w-full max-w-full overflow-x-hidden bg-background text-foreground">
@@ -226,29 +321,59 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 h-full max-w-full overflow-x-hidden relative">
         {/* Mobile Header */}
-        <header className="md:hidden flex-none flex items-center justify-between px-3.5 py-2.5 border-b bg-card/95 backdrop-blur z-20 shadow-xs">
-          <Link href="/" className="flex items-center gap-2 font-bold text-base text-primary shrink-0">
-            <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Sprout className="h-4 w-4 text-primary" />
-            </div>
-            <span>Grownox</span>
-          </Link>
+        <header className="md:hidden flex-none flex flex-col gap-2 px-3.5 py-2.5 border-b bg-card/95 backdrop-blur z-20 shadow-xs">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 font-bold text-base text-primary shrink-0">
+              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Sprout className="h-4 w-4 text-primary" />
+              </div>
+              <span>Grownox</span>
+            </Link>
 
-          <div className="flex items-center gap-2 max-w-[170px] sm:max-w-xs">
-            {selectedCountry && (
-              <span className="text-base shrink-0" title={selectedCountry.name}>
-                {selectedCountry.flag}
-              </span>
-            )}
-            <div className="relative w-full">
-              <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
-              <Input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="h-8 pl-7 text-xs bg-muted/50 border-transparent rounded-lg text-ellipsis overflow-hidden"
-                placeholder="Location..."
-              />
+            <div className="flex items-center gap-2 max-w-[170px] sm:max-w-xs">
+              {selectedCountry && (
+                <span className="text-base shrink-0" title={selectedCountry.name}>
+                  {selectedCountry.flag}
+                </span>
+              )}
+              <div className="relative w-full">
+                <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="h-8 pl-7 text-xs bg-muted/50 border-transparent rounded-lg text-ellipsis overflow-hidden"
+                  placeholder={t.locationPlaceholder}
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Mobile Section Switcher */}
+          <div className="flex items-center bg-muted p-0.5 rounded-xl border border-border/70 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => handleMobileSectionSwitch("market")}
+              className={`flex-1 py-1 px-2 rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                activeSection === "market"
+                  ? "bg-[#2E7D32] text-white shadow-xs font-black"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Store className="h-3.5 w-3.5 shrink-0" />
+              <span>{t.marketPage}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMobileSectionSwitch("farmer")}
+              className={`flex-1 py-1 px-2 rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                activeSection === "farmer"
+                  ? "bg-emerald-600 text-white shadow-xs font-black"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Sprout className="h-3.5 w-3.5 shrink-0" />
+              <span>{t.farmerPage}</span>
+            </button>
           </div>
         </header>
 
@@ -267,7 +392,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <span>·</span>
               </>
             )}
-            <span className="capitalize">{settings.weightUnit.replace("_", " ")} pricing</span>
+            <span className="capitalize">{settings.weightUnit.replace("_", " ")} {t.pricing}</span>
             <span>·</span>
             <span
               className={`font-medium ${
@@ -303,56 +428,54 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* Mobile Floating Action Navigation Button (FAB) */}
-        <div ref={fabRef} className="md:hidden fixed bottom-5 right-5 z-50 pointer-events-auto">
+        {/* Mobile Floating Quick Access Navigation Button (FAB) */}
+        <div ref={fabRef} className="md:hidden fixed bottom-28 right-3.5 sm:bottom-32 sm:right-4 z-50 pointer-events-auto">
           {/* Backdrop for mobile menu */}
           {fabOpen && (
             <div
-              className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-40 transition-opacity animate-in fade-in duration-200"
+              className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 transition-opacity animate-in fade-in duration-200"
               onClick={() => setFabOpen(false)}
             />
           )}
 
-          {/* Floating Circular Toggle Button */}
+          {/* Floating Toggle Button with Quick Access Icon */}
           <button
             type="button"
             onClick={() => setFabOpen((prev) => !prev)}
-            aria-label="Toggle Navigation Menu"
-            className={`relative z-50 h-14 w-14 rounded-full bg-emerald-600 text-white shadow-2xl flex items-center justify-center transition-all duration-200 hover:bg-emerald-700 active:scale-90 focus:outline-none focus:ring-4 focus:ring-emerald-400/40 ${
-              fabOpen ? "rotate-90 bg-emerald-700 ring-4 ring-emerald-500/30" : "hover:scale-105"
+            aria-label={t.quickAccess}
+            title={t.quickAccess}
+            className={`relative z-50 h-13 w-13 sm:h-14 sm:w-14 rounded-full bg-emerald-600 text-white shadow-2xl flex items-center justify-center border-2 border-emerald-400/40 transition-all duration-200 hover:bg-emerald-700 active:scale-95 focus:outline-none focus:ring-4 focus:ring-emerald-400/40 ${
+              fabOpen ? "rotate-90 bg-emerald-700 ring-4 ring-emerald-500/30" : "hover:scale-105 shadow-emerald-900/30"
             }`}
           >
-            {fabOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {fabOpen ? (
+              <X className="h-6 w-6" />
+            ) : (
+              <div className="relative flex items-center justify-center">
+                <Compass className="h-6 w-6 text-white" />
+                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-amber-400 rounded-full border-2 border-emerald-700 animate-pulse" />
+              </div>
+            )}
           </button>
 
           {/* Popover Navigation Menu */}
           {fabOpen && (
-            <div className="absolute bottom-16 right-0 z-50 w-64 bg-card/95 backdrop-blur-xl border border-border/80 rounded-2xl p-2.5 shadow-2xl space-y-1 animate-in fade-in zoom-in-90 slide-in-from-bottom-4 duration-200">
-              <div className="px-3 py-2 border-b border-border/50 mb-1 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
-                    <Sprout className="h-3.5 w-3.5 text-emerald-600" />
+            <div className="absolute bottom-16 right-0 z-50 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-stone-900 border border-border rounded-2xl p-2.5 shadow-2xl space-y-1 animate-in fade-in zoom-in-95 slide-in-from-bottom-3 duration-200">
+              <div className="px-3 py-2 border-b border-border/50 mb-1 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-6 w-6 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <Compass className="h-3.5 w-3.5 text-emerald-600" />
                   </div>
-                  <span className="font-bold text-xs text-foreground tracking-wide">AgriAssist Menu</span>
+                  <span className="font-bold text-xs text-foreground tracking-wide whitespace-nowrap truncate">{t.quickAccess}</span>
                 </div>
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold px-2 py-0.5 rounded-full">
-                  Quick Access
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0 whitespace-nowrap">
+                  <Zap className="h-2.5 w-2.5" /> {t.navigation}
                 </span>
               </div>
 
               <div className="space-y-0.5">
-                {[
-                  { href: "/", icon: LayoutDashboard, label: t.dashboard },
-                  { href: "/weather", icon: CloudSun, label: t.weather },
-                  { href: "/crops", icon: Sprout, label: t.crops },
-                  { href: "/market", icon: TrendingUp, label: t.market },
-                  { href: "/marketplace", icon: Store, label: t.marketplace },
-                  { href: "/farming-plan", icon: ClipboardList, label: t.farmingPlan },
-                  { href: "/tutorials", icon: Video, label: t.tutorials },
-                  { href: "/chat", icon: MessageSquare, label: t.chat },
-                  { href: "/settings", icon: Settings, label: t.settings },
-                ].map((item) => {
-                  const isCurrent = isNavItemActive(item.href, locationPath);
+                {mobileNavItems.map((item) => {
+                  const isCurrent = isNavItemActive(item.href, locationPath, activeSection);
 
                   return (
                     <Link
