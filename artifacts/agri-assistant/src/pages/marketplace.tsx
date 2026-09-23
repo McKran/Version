@@ -1965,11 +1965,11 @@ export default function MarketplacePage() {
                     )}
                   </Card>
 
-                  {/* Gemini AI Market Assessment */}
+                  {/* Grownox AI Market Assessment */}
                   <Card className="border bg-card p-3.5 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-                        <Sparkles className="h-4 w-4 text-primary" /> {isFil ? "Pagsusuri ng Gemini AI" : "Gemini AI Market Assessment"}
+                        <Sparkles className="h-4 w-4 text-primary" /> {isFil ? "Pagsusuri ng Grownox AI" : "Grownox AI Market Assessment"}
                       </span>
                       {loadingAi ? (
                         <Badge variant="outline" className="text-[10px] animate-pulse">{isFil ? "Sinusuri..." : "Analyzing..."}</Badge>

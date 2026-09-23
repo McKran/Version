@@ -1,45 +1,22 @@
 import { Router } from "express";
-import { openrouter } from "@workspace/integrations-openrouter-ai";
 import { getCached, setCached, TTL } from "../lib/db-cache";
 import { GetDashboardSummaryQueryParams } from "@workspace/api-zod";
 import { fetchCurrentWeather, getWeatherFallback } from "../lib/weather-service";
-import { getGenAI, AI_MODELS as GEMINI_MODELS } from "../lib/ai-config";
-
-const AI_MODELS = [
-  "deepseek/deepseek-chat-v3-0324:free",
-  "meta-llama/llama-3.1-8b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-];
+import { generateContentWithFallback, AI_MODELS } from "../lib/ai-config";
 
 async function aiComplete(prompt: string, maxTokens: number): Promise<string | null> {
-  // First try Gemini API
   try {
-    const ai = getGenAI();
-    const resp = await ai.models.generateContent({
-      model: GEMINI_MODELS.CHAT || "gemini-3.1-flash-lite",
+    const resp = await generateContentWithFallback({
+      preferredModel: AI_MODELS.CHAT,
       contents: prompt,
       config: {
         responseMimeType: "application/json",
         temperature: 0.4,
       },
     });
-    if (resp.text) return resp.text;
+    if (resp?.text) return resp.text;
   } catch (e) {
-    console.warn("[dashboard-ai] Gemini call failed, trying OpenRouter fallback...", (e as any)?.message);
-  }
-
-  // Fallback to OpenRouter
-  for (const model of AI_MODELS) {
-    try {
-      const resp = await (openrouter as any).chat.completions.create({
-        model,
-        max_tokens: maxTokens,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.4,
-      });
-      const content = resp.choices?.[0]?.message?.content as string | undefined;
-      if (content) return content;
-    } catch {}
+    console.warn("[dashboard-ai] Gemini completions failed, using smart defaults:", (e as any)?.message);
   }
   return null;
 }

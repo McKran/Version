@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GrownoxIcon } from "@/components/grownox-icon";
 import { GrownoxAiAvatar } from "@/components/grownox-ai-avatar";
+import { getCropAdvice } from "@/lib/farm-advice";
 import {
   Sprout,
+  Lightbulb,
   CloudSun,
   ClipboardList,
   Video,
@@ -536,6 +538,19 @@ export default function FarmerDashboard() {
   const userDisplayName = settings.userName || "Eduardo Ramos";
   const userLocation = location || settings.cityName || "Cabugao, Ilocos Sur";
 
+  // Selected crop for personalized farm advice
+  const primarySelectedCrop = preferredCropsList[0] || activePlan?.crop || "Rice";
+  const cropAdvice = useMemo(() => getCropAdvice(primarySelectedCrop), [primarySelectedCrop]);
+  
+  // Rotating advice index between visits/refreshes
+  const [adviceIndex, setAdviceIndex] = useState(() => Math.floor(Math.random() * (cropAdvice.tips.length || 1)));
+  const currentTip = cropAdvice.tips[adviceIndex % cropAdvice.tips.length] || cropAdvice.tips[0];
+  const adviceText = isFil ? currentTip.fil : currentTip.en;
+
+  const handleNextAdvice = () => {
+    setAdviceIndex((prev) => (prev + 1) % cropAdvice.tips.length);
+  };
+
   return (
     <div className="space-y-6 pb-12 font-sans text-stone-900 dark:text-stone-100">
       {/* 1. WELCOME HERO BANNER */}
@@ -564,11 +579,11 @@ export default function FarmerDashboard() {
           <Button
             asChild
             size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-xs"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-xs h-auto min-h-8 py-1.5 px-3 whitespace-normal text-center"
           >
-            <Link href="/chat">
-              <GrownoxIcon className="h-4 w-4 mr-1.5" />
-              {isFil ? "Buksan ang AI Assistant" : "Open AI Assistant"}
+            <Link href="/chat" className="inline-flex items-center justify-center gap-1.5">
+              <GrownoxIcon className="h-4 w-4 shrink-0" />
+              <span>{isFil ? "Buksan ang AI Assistant" : "Open AI Assistant"}</span>
             </Link>
           </Button>
 
@@ -576,11 +591,11 @@ export default function FarmerDashboard() {
             asChild
             variant="outline"
             size="sm"
-            className="text-xs font-semibold rounded-xl bg-background hover:bg-muted border-border"
+            className="text-xs font-semibold rounded-xl bg-background hover:bg-muted border-border h-auto min-h-8 py-1.5 px-3 whitespace-normal text-center"
           >
-            <Link href="/farming-plan">
-              <Plus className="h-4 w-4 mr-1.5 text-primary" />
-              {t.newFarmPlan}
+            <Link href="/farming-plan" className="inline-flex items-center justify-center gap-1.5">
+              <Plus className="h-4 w-4 shrink-0 text-primary" />
+              <span>{t.newFarmPlan}</span>
             </Link>
           </Button>
 
@@ -588,11 +603,11 @@ export default function FarmerDashboard() {
             asChild
             variant="outline"
             size="sm"
-            className="text-xs font-semibold rounded-xl bg-background hover:bg-muted border-border"
+            className="text-xs font-semibold rounded-xl bg-background hover:bg-muted border-border h-auto min-h-8 py-1.5 px-3 whitespace-normal text-center"
           >
-            <Link href="/farming-plan">
-              <Calendar className="h-4 w-4 mr-1.5 text-amber-600" />
-              {t.logTask}
+            <Link href="/farming-plan" className="inline-flex items-center justify-center gap-1.5">
+              <Calendar className="h-4 w-4 shrink-0 text-amber-600" />
+              <span>{t.logTask}</span>
             </Link>
           </Button>
 
@@ -600,11 +615,11 @@ export default function FarmerDashboard() {
             asChild
             variant="outline"
             size="sm"
-            className="text-xs font-semibold rounded-xl bg-muted/60 text-primary hover:bg-muted border-border"
+            className="text-xs font-semibold rounded-xl bg-muted/60 text-primary hover:bg-muted border-border h-auto min-h-8 py-1.5 px-3 whitespace-normal text-center"
           >
-            <Link href="/market">
-              <TrendingUp className="h-4 w-4 mr-1.5" />
-              {t.viewMarket}
+            <Link href="/market" className="inline-flex items-center justify-center gap-1.5">
+              <TrendingUp className="h-4 w-4 shrink-0" />
+              <span>{t.viewMarket}</span>
             </Link>
           </Button>
         </div>
@@ -613,15 +628,15 @@ export default function FarmerDashboard() {
       {/* DISASTER ALERTS IF ACTIVE */}
       <DisasterAlertsSection location={location} compact={true} />
 
-      {/* 2. FARM OVERVIEW KPI CARDS (4-Column Grid) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. FARM OVERVIEW KPI CARDS (3-Column Grid) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* KPI 1: Registered Crops */}
         <div className="bg-card rounded-2xl border border-border/80 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-primary/50 transition-all">
-          <div className="flex items-start justify-between">
-            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+          <div className="flex items-start justify-between gap-2">
+            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <Sprout className="h-5 w-5" />
             </span>
-            <Badge className="bg-emerald-600 text-white text-[10px] font-bold">
+            <Badge className="bg-emerald-600 text-white text-[10px] font-bold whitespace-normal text-right max-w-[65%] leading-tight break-words py-1 px-2">
               {preferredCropsList.length > 0 ? t.optimalHealth : t.noCropsBadge}
             </Badge>
           </div>
@@ -644,63 +659,44 @@ export default function FarmerDashboard() {
           </div>
         </div>
 
-        {/* KPI 2: Farm Plans */}
+        {/* KPI 2: Farm Advice */}
         <div className="bg-card rounded-2xl border border-border/80 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-primary/50 transition-all">
-          <div className="flex items-start justify-between">
-            <span className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
-              <ClipboardList className="h-5 w-5" />
+          <div className="flex items-start justify-between gap-2">
+            <span className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <Lightbulb className="h-5 w-5" />
             </span>
-            <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-bold">
-              {activePlan ? t.activePlanCount : t.noActivePlanCount}
+            <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-bold border-transparent whitespace-normal text-right max-w-[65%] leading-tight break-words py-1 px-2">
+              {cropAdvice.emoji} {isFil ? cropAdvice.cropLabelFil : cropAdvice.cropLabelEn}
             </Badge>
           </div>
-          <div className="mt-4">
-            <p className="text-xl sm:text-2xl font-black text-foreground">
-              {activePlan ? activePlan.name : t.farmPlans}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {activePlan ? `Crop: ${activePlan.crop} • Stage: ${currentStageName}` : t.createCustomPlan}
+          <div className="mt-3 flex-1">
+            <p className="text-xl sm:text-2xl font-black text-foreground">{t.farmAdvice}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">
+              "{adviceText}"
             </p>
           </div>
           <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">{t.progress}: {overallPlanProgress}%</span>
-            <span className="text-emerald-600 font-bold">{activePlan ? t.active : t.ready}</span>
+            <span className="text-muted-foreground font-medium">
+              {isFil ? currentTip.categoryFil : currentTip.categoryEn}
+            </span>
+            <button
+              type="button"
+              onClick={handleNextAdvice}
+              className="text-primary font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <RefreshCw className="h-3 w-3" />
+              <span>{isFil ? "Ibang Payo" : "Next Tip"}</span>
+            </button>
           </div>
         </div>
 
-        {/* KPI 3: Upcoming Tasks */}
+        {/* KPI 3: Field Weather Station */}
         <div className="bg-card rounded-2xl border border-border/80 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-primary/50 transition-all">
-          <div className="flex items-start justify-between">
-            <span className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-600">
-              <Clock className="h-5 w-5" />
-            </span>
-            <Badge className="bg-rose-500/10 text-rose-700 dark:text-rose-400 text-[10px] font-bold">
-              {tasks.filter((tItem) => !tItem.done).length} {t.pendingTasksCount}
-            </Badge>
-          </div>
-          <div className="mt-4">
-            <p className="text-xl sm:text-2xl font-black text-foreground">{t.upcomingTasks}</p>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {tasks.length > 0
-                ? tasks.filter((tItem) => !tItem.done).map((tItem) => tItem.label).join(", ") || t.allTasksCompleted
-                : t.noActiveTasksQueued}
-            </p>
-          </div>
-          <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">
-              {tasks.filter((tItem) => !tItem.done).length > 0 ? t.pendingSchedule : t.upToDate}
-            </span>
-            <span className="text-rose-600 font-bold">{t.priority}</span>
-          </div>
-        </div>
-
-        {/* KPI 4: Field Weather Weather Station */}
-        <div className="bg-card rounded-2xl border border-border/80 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-primary/50 transition-all">
-          <div className="flex items-start justify-between">
-            <span className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-600">
+          <div className="flex items-start justify-between gap-2">
+            <span className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-600 shrink-0">
               <CloudSun className="h-5 w-5" />
             </span>
-            <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
+            <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold whitespace-normal text-right max-w-[65%] leading-tight break-words py-1 px-2">
               {isFil ? "MAGANDANG INDEKS NG PAG-SPRAY" : "GOOD SPRAY INDEX"}
             </Badge>
           </div>
@@ -825,20 +821,20 @@ export default function FarmerDashboard() {
                 })}
               </div>
             ) : (
-              <div className="p-8 text-center bg-muted/30 rounded-xl border border-dashed border-border space-y-3">
+              <div className="px-4 py-7 sm:p-8 text-center bg-muted/30 rounded-xl border border-dashed border-border space-y-3 flex flex-col items-center justify-center overflow-hidden">
                 <Sprout className="h-10 w-10 text-muted-foreground mx-auto" />
                 <h3 className="text-sm font-bold text-foreground">
                   {isFil ? "Wala Pang Napiling Pananim" : "No Crops Selected Yet"}
                 </h3>
-                <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
                   {isFil
                     ? "Wala ka pang napiling pananim sa onboarding. Piliin ang iyong mga pananim upang makita ang gabay, presyo, at iskedyul."
                     : "You haven't selected any crops during onboarding. Select your cultivated crops to see personalized guides, market prices, and schedules."}
                 </p>
-                <Button asChild size="sm" className="bg-primary text-white font-bold text-xs rounded-xl">
-                  <Link href="/crops">
-                    <Plus className="h-4 w-4 mr-1.5" />
-                    {isFil ? "Piliin ang Iyong Pananim" : "Select Your Crops"}
+                <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl h-auto min-h-8 py-2 px-4 max-w-full whitespace-normal text-center leading-snug">
+                  <Link href="/crops" className="inline-flex items-center justify-center gap-1.5 flex-wrap">
+                    <Plus className="h-4 w-4 shrink-0" />
+                    <span>{isFil ? "Piliin ang Iyong Pananim" : "Select Your Crops"}</span>
                   </Link>
                 </Button>
               </div>
@@ -886,10 +882,10 @@ export default function FarmerDashboard() {
                   asChild
                   size="sm"
                   variant="outline"
-                  className="text-xs font-bold border-primary text-primary hover:bg-primary/10 cursor-pointer h-8 px-3 rounded-xl self-start sm:self-auto"
+                  className="text-xs font-bold border-primary text-primary hover:bg-primary/10 cursor-pointer h-auto min-h-8 py-1.5 px-3 rounded-xl self-start sm:self-auto whitespace-normal text-center"
                 >
-                  <Link href={`/farming-plan?planId=${encodeURIComponent(String(activePlan.id))}`}>
-                    <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                  <Link href={`/farming-plan?planId=${encodeURIComponent(String(activePlan.id))}`} className="inline-flex items-center justify-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
                     <span>{isFil ? "Buksan ang Tagaplano" : "Open Farm Planner"}</span>
                   </Link>
                 </Button>
@@ -988,22 +984,24 @@ export default function FarmerDashboard() {
               </Link>
             ) : (
               /* CLEAN EMPTY STATE: "No active farm plan" */
-              <div className="p-8 sm:p-10 text-center bg-muted/20 rounded-xl border border-dashed border-border/80 space-y-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+              <div className="px-4 py-8 sm:px-8 sm:py-10 text-center bg-muted/20 rounded-xl border border-dashed border-border/80 space-y-4 flex flex-col items-center justify-center overflow-hidden">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto shrink-0">
                   <Sprout className="h-6 w-6 text-primary" />
                 </div>
-                <div className="space-y-1 max-w-md mx-auto">
+                <div className="space-y-1.5 max-w-md mx-auto px-2">
                   <h3 className="text-base font-bold text-foreground">{t.noActiveFarmPlanTitle}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {t.noActiveFarmPlanDesc}
                   </p>
                 </div>
-                <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-xs px-5">
-                  <Link href="/farming-plan">
-                    <Plus className="h-4 w-4 mr-1.5" />
-                    {t.openFarmPlanner}
-                  </Link>
-                </Button>
+                <div className="pt-1 w-full max-w-xs mx-auto flex justify-center">
+                  <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-xs px-4 sm:px-6 py-2.5 h-auto max-w-full whitespace-normal text-center leading-snug">
+                    <Link href="/farming-plan" className="inline-flex items-center justify-center gap-1.5 flex-wrap text-center">
+                      <Plus className="h-4 w-4 shrink-0" />
+                      <span>{t.openFarmPlanner}</span>
+                    </Link>
+                  </Button>
+                </div>
               </div>
             )}
           </section>
@@ -1204,9 +1202,11 @@ export default function FarmerDashboard() {
             <Button
               asChild
               variant="outline"
-              className="w-full py-2 rounded-xl text-xs font-bold border-[#DDE5DE] dark:border-border text-[#166534] dark:text-emerald-400 hover:bg-[#E8F5E9] dark:hover:bg-muted cursor-pointer"
+              className="w-full h-auto py-2.5 px-3 rounded-xl text-xs font-bold border-[#DDE5DE] dark:border-border text-[#166534] dark:text-emerald-400 hover:bg-[#E8F5E9] dark:hover:bg-muted cursor-pointer whitespace-normal text-center leading-snug"
             >
-              <Link href="/chat">{t.openFullAiChat}</Link>
+              <Link href="/chat" className="inline-flex items-center justify-center gap-1.5 text-center">
+                <span>{t.openFullAiChat}</span>
+              </Link>
             </Button>
           </section>
 
@@ -1283,9 +1283,11 @@ export default function FarmerDashboard() {
             <Button
               asChild
               variant="outline"
-              className="w-full py-2 rounded-xl text-xs font-semibold border-border hover:bg-muted cursor-pointer"
+              className="w-full h-auto py-2.5 px-3 rounded-xl text-xs font-semibold border-border hover:bg-muted cursor-pointer whitespace-normal text-center leading-snug"
             >
-              <Link href="/weather">{isFil ? "Buksan ang Detalyadong Radar ng Panahon" : "Open Detailed Weather Radar"}</Link>
+              <Link href="/weather" className="inline-flex items-center justify-center gap-1.5 text-center">
+                <span>{isFil ? "Buksan ang Detalyadong Radar ng Panahon" : "Open Detailed Weather Radar"}</span>
+              </Link>
             </Button>
           </section>
 
@@ -1342,11 +1344,11 @@ export default function FarmerDashboard() {
               <p className="text-xs text-muted-foreground">{isFil ? "May tuyong ani ka ba na handa na sa merkado?" : "Have dry harvest ready for market?"}</p>
               <Button
                 asChild
-                className="w-full py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-xs cursor-pointer"
+                className="w-full h-auto py-2.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-xs cursor-pointer whitespace-normal text-center leading-snug"
               >
-                <Link href="/market">
-                  <Store className="h-4 w-4 mr-1.5" />
-                  {isFil ? "Tingnan ang Merkado at Mag-post" : "View Market & Post Lot"}
+                <Link href="/market" className="inline-flex items-center justify-center gap-1.5 flex-wrap text-center">
+                  <Store className="h-4 w-4 shrink-0" />
+                  <span>{isFil ? "Tingnan ang Merkado at Mag-post" : "View Market & Post Lot"}</span>
                 </Link>
               </Button>
             </div>

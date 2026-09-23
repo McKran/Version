@@ -142,6 +142,7 @@ export interface Translations {
   ready: string;
   pendingTasksCount: string;
   upcomingTasks: string;
+  farmAdvice: string;
   allTasksCompleted: string;
   noActiveTasksQueued: string;
   pendingSchedule: string;
@@ -487,6 +488,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     ready: "Ready",
     pendingTasksCount: "PENDING TASKS",
     upcomingTasks: "Upcoming Tasks",
+    farmAdvice: "Farm Advice",
     allTasksCompleted: "All tasks completed!",
     noActiveTasksQueued: "No active tasks queued",
     pendingSchedule: "Pending Schedule",
@@ -830,6 +832,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     ready: "Handa",
     pendingTasksCount: "MGA NAIWANG GAWAIN",
     upcomingTasks: "Mga Parating na Gawain",
+    farmAdvice: "Payo sa Bukid",
     allTasksCompleted: "Lahat ng gawain ay tapos na!",
     noActiveTasksQueued: "Walang nakapilang gawain",
     pendingSchedule: "Nakatakdang Gawain",

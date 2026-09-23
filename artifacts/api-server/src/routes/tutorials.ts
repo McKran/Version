@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getGenAI, AI_MODELS } from "../lib/ai-config";
+import { generateContentWithFallback, AI_MODELS } from "../lib/ai-config";
 import { getCached, setCached, TTL } from "../lib/db-cache";
 
 const router = Router();
@@ -314,8 +314,6 @@ router.post("/tutorials/analyze", async (req, res) => {
       return;
     }
 
-    const ai = getGenAI();
-
     const videoInputList = videos.map((v, i) => ({
       index: i,
       id: v.id,
@@ -381,8 +379,8 @@ ${JSON.stringify(videoInputList, null, 2)}`;
 
     let responseText = "";
     try {
-      const response = await ai.models.generateContent({
-        model: AI_MODELS.MARKET_INSIGHTS || "gemini-3.6-flash",
+      const response = await generateContentWithFallback({
+        preferredModel: AI_MODELS.MARKET_INSIGHTS,
         contents: [
           {
             role: "user",
@@ -396,21 +394,7 @@ ${JSON.stringify(videoInputList, null, 2)}`;
       });
       responseText = response.text || "";
     } catch (aiErr: any) {
-      console.warn("[tutorials/analyze] Primary Gemini call failed, trying gemini-3.1-flash-lite fallback:", aiErr?.message || aiErr);
-      const fallbackResp = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite",
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: `${systemInstruction}\n\n${userPrompt}` }],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2,
-        },
-      });
-      responseText = fallbackResp.text || "";
+      console.warn("[tutorials/analyze] Gemini analysis failed:", aiErr?.message || aiErr);
     }
 
     let parsedResult: any = null;

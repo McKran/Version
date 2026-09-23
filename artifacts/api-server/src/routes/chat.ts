@@ -1,7 +1,7 @@
 /**
- * AI Chat Route — Gemini
+ * AI Chat Route — Grownox AI
  *
- * Uses Gemini API with gemini-3.1-flash-lite model.
+ * Uses Gemini API with gemini-3.5-flash-lite model.
  * Specialized for Philippine agriculture assistance only.
  * Conversation history stored in Postgres via Drizzle ORM (or in-memory if DB missing).
  */
@@ -9,7 +9,7 @@
 import { Router } from "express";
 import { db, conversations, messages } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
-import { AI_MODELS, getGenAI, getGeminiApiKey } from "../lib/ai-config";
+import { AI_MODELS, generateContentStreamWithFallback, getGeminiApiKey } from "../lib/ai-config";
 
 const router = Router();
 
@@ -266,32 +266,12 @@ router.post("/chat/conversations/:id/messages", async (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders?.();
 
-    const ai = getGenAI();
-    let stream: any = null;
-    let streamErr: any = null;
-
-    try {
-      stream = await ai.models.generateContentStream({
-        model: AI_MODELS.CHAT,
-        contents: geminiContents as any,
-        config: chatConfig,
-      });
-    } catch (err: any) {
-      console.warn(`[chat] Model ${AI_MODELS.CHAT} error: ${err?.message || err}. Trying fallback model gemini-3.6-flash...`);
-      try {
-        stream = await ai.models.generateContentStream({
-          model: "gemini-3.6-flash",
-          contents: geminiContents as any,
-          config: chatConfig,
-        });
-      } catch (err2) {
-        streamErr = err2;
-      }
-    }
-
-    if (!stream) {
-      throw streamErr || new Error("Failed to initialize Gemini stream");
-    }
+    const { stream, modelUsed } = await generateContentStreamWithFallback({
+      preferredModel: AI_MODELS.CHAT,
+      contents: geminiContents as any,
+      config: chatConfig,
+    });
+    console.log(`[chat] Streaming with model: ${modelUsed}`);
 
     let fullResponse = "";
 

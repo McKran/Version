@@ -5,7 +5,7 @@
  * Provides authoritative DA Bantay Presyo retail & wholesale price tracking across Philippine regions and provinces.
  */
 
-import { AI_MODELS, getGenAI } from "./ai-config";
+import { AI_MODELS, generateContentWithFallback } from "./ai-config";
 
 export interface DAPriceRecord {
   id: string;
@@ -412,7 +412,7 @@ export function calculatePriceStatistics(commodity: string, regionStr?: string):
 }
 
 /**
- * Gemini AI Market Insights Engine using gemini-3.6-flash
+ * Grownox AI Market Insights Engine using gemini-3.5-flash-lite
  */
 export async function generateGeminiMarketInsight(
   commodity: string,
@@ -491,30 +491,14 @@ Generate a structured JSON report with these EXACT fields:
 Respond ONLY with valid JSON.`;
 
   try {
-    const ai = getGenAI();
-    let resp;
-    try {
-      resp = await ai.models.generateContent({
-        model: AI_MODELS.MARKET_INSIGHTS,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2,
-        },
-      });
-    } catch (e1: any) {
-      console.warn(`[market-insight] Model ${AI_MODELS.MARKET_INSIGHTS} failed (${e1?.message || e1}). Attempting valid fallback model gemini-3.6-flash...`);
-      // If primary was gemini-3.1-flash-lite, try gemini-3.6-flash or gemini-flash-latest
-      const fallbackModel = AI_MODELS.MARKET_INSIGHTS === "gemini-3.6-flash" ? "gemini-3.1-flash-lite" : "gemini-3.6-flash";
-      resp = await ai.models.generateContent({
-        model: fallbackModel,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2,
-        },
-      });
-    }
+    const resp = await generateContentWithFallback({
+      preferredModel: AI_MODELS.MARKET_INSIGHTS,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.2,
+      },
+    });
 
     const rawText = resp.text ?? "{}";
     const parsed = JSON.parse(rawText);

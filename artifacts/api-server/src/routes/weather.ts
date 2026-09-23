@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { openrouter } from "@workspace/integrations-openrouter-ai";
 import { getCached, setCached, TTL } from "../lib/db-cache";
 import { fetchCurrentWeather } from "../lib/weather-service";
 import { WMO_CONDITIONS, FARMING_NOTES } from "../lib/wmo-codes";
@@ -8,25 +7,21 @@ import {
   GetWeatherForecastQueryParams,
   GetFarmingAdviceQueryParams,
 } from "@workspace/api-zod";
-
-const AI_MODELS = [
-  "deepseek/deepseek-chat-v3-0324:free",
-  "meta-llama/llama-3.1-8b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-];
+import { generateContentWithFallback, AI_MODELS } from "../lib/ai-config";
 
 async function aiComplete(prompt: string, maxTokens: number): Promise<string | null> {
-  for (const model of AI_MODELS) {
-    try {
-      const resp = await (openrouter as any).chat.completions.create({
-        model,
-        max_tokens: maxTokens,
-        messages: [{ role: "user", content: prompt }],
+  try {
+    const resp = await generateContentWithFallback({
+      preferredModel: AI_MODELS.CHAT,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
         temperature: 0.4,
-      });
-      const content = resp.choices?.[0]?.message?.content as string | undefined;
-      if (content) return content;
-    } catch {}
+      },
+    });
+    if (resp?.text) return resp.text;
+  } catch (err) {
+    console.warn("[weather-ai] Gemini completions failed, using fallback advice:", (err as any)?.message);
   }
   return null;
 }

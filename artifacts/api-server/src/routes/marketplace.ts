@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { AI_MODELS, getGenAI } from "../lib/ai-config";
+import { AI_MODELS, generateContentWithFallback } from "../lib/ai-config";
 import { getCached, setCached, TTL } from "../lib/db-cache";
 import {
   getMarketplaceListings,
@@ -370,29 +370,14 @@ Provide a concise, professional market analysis JSON report containing:
 
 Respond ONLY with valid JSON matching these exact keys.`;
 
-    let resp;
-    try {
-      const ai = getGenAI();
-      resp = await ai.models.generateContent({
-        model: AI_MODELS.MARKETPLACE_EVAL,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2,
-        },
-      });
-    } catch (e1: any) {
-      console.warn(`[marketplace-eval] Model ${AI_MODELS.MARKETPLACE_EVAL} error: ${e1?.message || e1}. Falling back to gemini-3.6-flash...`);
-      const ai = getGenAI();
-      resp = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2,
-        },
-      });
-    }
+    const resp = await generateContentWithFallback({
+      preferredModel: AI_MODELS.MARKETPLACE_EVAL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.2,
+      },
+    });
 
     const parsed = JSON.parse(resp.text ?? "{}");
 
